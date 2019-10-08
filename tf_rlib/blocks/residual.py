@@ -26,11 +26,11 @@ def shortcut_padding(out, x, downsample):
     return out
 
 
-class ResBlock(tf.keras.layers.Layer):
+class ResBlock(blocks.Block):
     outchannel_ratio = 1
 
     def __init__(self, filters, strides=1):
-        super(ResBlock, self).__init__()
+        super(ResBlock, self).__init__(filters, strides=strides)
         self.strides = strides
         self.bk1 = blocks.BasicBlock(filters,
                                      3,
@@ -56,11 +56,11 @@ class ResBlock(tf.keras.layers.Layer):
         return out
 
 
-class ResBottleneck(tf.keras.layers.Layer):
+class ResBottleneck(blocks.Block):
     outchannel_ratio = 4
 
     def __init__(self, filters, strides=1):
-        super(ResBottleneck, self).__init__()
+        super(ResBottleneck, self).__init__(filters, strides=strides)
         self.strides = strides
         self.bk1 = blocks.BasicBlock(filters,
                                      1,

@@ -1,8 +1,8 @@
 import tensorflow as tf
-from tf_rlib import layers
+from tf_rlib import layers, blocks
 
 
-class BasicBlock(tf.keras.layers.Layer):
+class BasicBlock(blocks.Block):
     def __init__(self,
                  filters,
                  ks,
@@ -11,7 +11,7 @@ class BasicBlock(tf.keras.layers.Layer):
                  use_norm=True,
                  use_act=True,
                  transpose=False):
-        super(BasicBlock, self).__init__()
+        super(BasicBlock, self).__init__(filters, strides=strides)
         self.preact = preact
         self.use_norm = use_norm
         self.use_act = use_act
