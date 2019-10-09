@@ -13,7 +13,7 @@ class ClassificationRunner(runner.Runner):
     TODO:
         AdamW, Lookahead, MultiGPU, tensorboard, metrics, WeightDecay
     """
-    def __init__(self, train_dataset, valid_dataset=None, save_path='ckpt/'):
+    def __init__(self, train_dataset, valid_dataset=None):
         self.model = PyramidNet()
         self.model(
             tf.keras.Input(shape=train_dataset.element_spec[0].shape[1:],
@@ -30,7 +30,6 @@ class ClassificationRunner(runner.Runner):
         super(ClassificationRunner, self).__init__({'Classifier': self.model},
                                                    train_dataset,
                                                    valid_dataset=valid_dataset,
-                                                   save_path=save_path,
                                                    metrics=metrics,
                                                    best_state='valid_acc')
         self.criterion = tf.keras.losses.SparseCategoricalCrossentropy(

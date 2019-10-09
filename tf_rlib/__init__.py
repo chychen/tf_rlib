@@ -33,9 +33,10 @@ def run(main):
 
 
 flags.DEFINE_string('task', 'Classification', 'what is your task?')
-flags.DEFINE_string('log_path', 'log', 'path for logging files')
+flags.DEFINE_string('log_path', '/tmp/log', 'path for logging files') # save on local is faster
+flags.DEFINE_string('save_path', '/tmp/ckpt', 'path for ckpt files') # save on local is faster
 flags.DEFINE_string('exp_name', 'default', 'name for this experiment')
-flags.DEFINE_float('lr', 1e-4, 'Initial Learning Rate')
+flags.DEFINE_float('lr', 1e-3, 'Initial Learning Rate')
 flags.DEFINE_integer('bs', 128, 'Batch Size')
 flags.DEFINE_integer('out_dim', 10, 'Model output dimensions')
 flags.DEFINE_string('padding', 'same', 'padding flag for conv, downsample')

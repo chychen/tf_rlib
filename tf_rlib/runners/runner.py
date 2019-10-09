@@ -13,7 +13,7 @@ class Runner:
                  models,
                  train_dataset,
                  valid_dataset=None,
-                 save_path='ckpt/',
+                 save_path=None,
                  metrics=None,
                  best_state=None):
         """
@@ -22,9 +22,10 @@ class Runner:
             metrics (dict): key(str), value(tf.keras.metrics.Metric)
         """
         self.models = models
+        self.epoch = 0
         self.train_dataset = train_dataset
         self.valid_dataset = valid_dataset
-        self.save_path = save_path
+        self.save_path = FLAGS.save_path
         self.train_dataset_size = self._get_size(train_dataset)
         self.valid_dataset_size = self._get_size(valid_dataset)
         self.matrics_manager = MetricsManager(best_state)
@@ -37,9 +38,10 @@ class Runner:
                 self.matrics_manager.add_metrics(k, v)
 
     def fit(self, epochs):
-        for epoch in range(epochs):
+        for _ in range(epochs):
+            self.epoch = self.epoch + 1
             self.matrics_manager.reset()
-            self.matrics_manager.append_message('epoch: {}\n'.format(epoch))
+            self.matrics_manager.append_message('epoch: {}\n'.format(self.epoch))
             # train one epoch
             with tqdm(total=self.train_dataset_size, leave=False) as pbar:
                 for step, (x_batch, y_batch) in enumerate(self.train_dataset):
@@ -139,7 +141,7 @@ class MetricsManager:
     def update(self, data):
         """
         Args
-            data (TF.Tensor)
+            data (dict): key(str), value(list)
         """
         if type(data) == dict:
             self.num_data = self.num_data + 1
