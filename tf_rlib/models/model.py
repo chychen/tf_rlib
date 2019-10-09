@@ -6,7 +6,7 @@ import numpy as np
 FLAGS = flags.FLAGS
 
 
-class Model(tf.keras.layers.Layer):
+class Model(tf.keras.Model):
     def __init__(self):
         super(Model, self).__init__()
 
