@@ -42,8 +42,7 @@ class Runner:
             self.matrics_manager.append_message('epoch: {}\n'.format(epoch))
             # train one epoch
             with tqdm(total=self.train_dataset_size, leave=False) as pbar:
-                for step, (x_batch,
-                           y_batch) in enumerate(self.train_dataset):
+                for step, (x_batch, y_batch) in enumerate(self.train_dataset):
                     loss = self.train_step(x_batch, y_batch)
                     pbar.update(1)
                     self.matrics_manager.update(loss)
@@ -125,7 +124,7 @@ class MetricsManager:
 
     def append_message(self, msg):
         self.message = self.message + msg
-    
+
     def show_message(self):
         time_cost = time.time() - self.timer
         dict_ = self.get_result()
@@ -136,7 +135,7 @@ class MetricsManager:
             self.num_data * FLAGS.bs / time_cost)
         self.append_message(tmp_msg)
         logging.info(self.message)
-        
+
     def update(self, data):
         """
         Args

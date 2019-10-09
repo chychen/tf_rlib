@@ -18,21 +18,24 @@ def define_flags():
         pass
     else:
         raise NotImplementedError
-        
+
+
 def run(main):
     try:
-        app.run(main)
-        if not os.path.exists(FLAGS.log_dir):
-            os.makedirs(FLAGS.log_dir)
-        logging.get_absl_handler().use_absl_log_file(FLAGS.exp_name, log_dir=FLAGS.log_dir)
+        app.run(lambda _: 0)
     except:
         print('Done')
+    if not os.path.exists(FLAGS.log_path):
+        os.makedirs(FLAGS.log_path)
+    logging.get_absl_handler().use_absl_log_file(FLAGS.exp_name,
+                                                 log_dir=FLAGS.log_path)
+    main(None)
 
 
 flags.DEFINE_string('task', 'Classification', 'what is your task?')
-# flags.DEFINE_string('log_dir', 'log', 'path for logging files')
+flags.DEFINE_string('log_path', 'log', 'path for logging files')
 flags.DEFINE_string('exp_name', 'default', 'name for this experiment')
-flags.DEFINE_float('lr', 1e-3, 'Initial Learning Rate')
+flags.DEFINE_float('lr', 1e-4, 'Initial Learning Rate')
 flags.DEFINE_integer('bs', 128, 'Batch Size')
 flags.DEFINE_integer('out_dim', 10, 'Model output dimensions')
 flags.DEFINE_string('padding', 'same', 'padding flag for conv, downsample')
