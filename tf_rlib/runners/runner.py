@@ -97,6 +97,7 @@ class Runner:
         """
         raise NotImplementedError
 
+    @tf.function
     def validate_step(self, x, y):
         """
         Args:
@@ -106,7 +107,8 @@ class Runner:
             metrics (dict)
         """
         raise NotImplementedError
-
+    
+    @tf.function
     def inference(self, dataset):
         raise NotImplementedError
 

@@ -56,6 +56,7 @@ class ClassificationRunner(runner.Runner):
         self.optim.apply_gradients(zip(grads, self.model.trainable_weights))
         return {'train_loss': [loss]}
 
+    @tf.function
     def validate_step(self, x, y):
         """
         Args:
@@ -68,5 +69,6 @@ class ClassificationRunner(runner.Runner):
         probs = tf.nn.softmax(logits)
         return {'valid_loss': [y, logits], 'valid_acc': [y, probs]}
 
+    @tf.function
     def inference(self, dataset):
         raise NotImplementedError
