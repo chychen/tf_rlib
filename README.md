@@ -21,6 +21,7 @@
         - runner and model, such as classification task, we use:
             - pyramidnet as model.
             - mixup, lookahead, adamw in runner.
+    - you can leave jupyter training along, monitor it through tensorboard with interative mode; through loogin files with detached mode.
 
 ### Code WiKi
 
@@ -44,4 +45,8 @@
         - classification.py: TODO
     - utils:
         - ipython.py: apis related to notebook.
+        - tensorboard.py: Manager for Tensorboard 
+    - research: not yet best practice
+    - datasets: dataloader, preprocessing, normalization
+        
   

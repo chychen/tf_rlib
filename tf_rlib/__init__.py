@@ -1,6 +1,11 @@
 import os
 import sys
+import threading
+import datetime
+current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 import tensorflow as tf
+tf.get_logger().setLevel('WARNING')
+from tensorboard import program
 from absl import app
 from absl import flags, logging
 from tf_rlib.utils.ipython import isnotebook
@@ -12,12 +17,11 @@ logging.set_stderrthreshold(logging.INFO)
 
 FLAGS = flags.FLAGS
 
-
-def define_flags():
-    if FLAGS.task == 'Classification':
-        pass
-    else:
-        raise NotImplementedError
+# def define_flags():
+#     if FLAGS.task == 'Classification':
+#         pass
+#     else:
+#         raise NotImplementedError
 
 
 def run(main):
@@ -29,12 +33,23 @@ def run(main):
         os.makedirs(FLAGS.log_path)
     logging.get_absl_handler().use_absl_log_file(FLAGS.exp_name,
                                                  log_dir=FLAGS.log_path)
+
+    # new thread for tensorboard, avoiding from annoying logging msg on notebook
+    def launchTensorBoard():
+        os.system('tensorboard --logdir {} --bind_all'.format(FLAGS.log_path))
+        return
+
+    t = threading.Thread(target=launchTensorBoard, args=([]))
+    t.start()
+
     main(None)
 
 
 flags.DEFINE_string('task', 'Classification', 'what is your task?')
-flags.DEFINE_string('log_path', '/tmp/log', 'path for logging files') # save on local is faster
-flags.DEFINE_string('save_path', '/tmp/ckpt', 'path for ckpt files') # save on local is faster
+flags.DEFINE_string('log_path', '/tmp/{}/log'.format(current_time),
+                    'path for logging files')  # save on local is faster
+flags.DEFINE_string('save_path', '/tmp/{}/ckpt'.format(current_time),
+                    'path for ckpt files')  # save on local is faster
 flags.DEFINE_string('exp_name', 'default', 'name for this experiment')
 flags.DEFINE_float('lr', 1e-3, 'Initial Learning Rate')
 flags.DEFINE_integer('bs', 128, 'Batch Size')

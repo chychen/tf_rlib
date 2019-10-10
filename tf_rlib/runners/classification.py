@@ -11,7 +11,7 @@ FLAGS = flags.FLAGS
 class ClassificationRunner(runner.Runner):
     """
     TODO:
-        AdamW, Lookahead, MultiGPU, tensorboard, metrics, WeightDecay
+        AdamW, Lookahead, MultiGPU, tensorboard, metrics, WeightDecay, mixup
     """
     def __init__(self, train_dataset, valid_dataset=None):
         self.model = PyramidNet()
@@ -19,19 +19,24 @@ class ClassificationRunner(runner.Runner):
             tf.keras.Input(shape=train_dataset.element_spec[0].shape[1:],
                            dtype=tf.float32))
         logging.info(self.model.num_params)
-        metrics = {
-            'train_loss':
-            tf.keras.metrics.MeanTensor(),
-            'valid_loss':
-            tf.keras.metrics.SparseCategoricalCrossentropy(from_logits=True),
-            'valid_acc':
-            tf.keras.metrics.SparseCategoricalAccuracy()
+        train_metrics = {
+            'loss': tf.keras.metrics.MeanTensor('loss'),
+            'acc': tf.keras.metrics.SparseCategoricalAccuracy('acc')
         }
-        super(ClassificationRunner, self).__init__({'Classifier': self.model},
-                                                   train_dataset,
-                                                   valid_dataset=valid_dataset,
-                                                   metrics=metrics,
-                                                   best_state='valid_acc')
+        valid_metrics = {
+            'loss':
+            tf.keras.metrics.SparseCategoricalCrossentropy('loss',
+                                                           from_logits=True),
+            'acc':
+            tf.keras.metrics.SparseCategoricalAccuracy('acc')
+        }
+        super(ClassificationRunner,
+              self).__init__({self.model.name: self.model},
+                             train_dataset,
+                             valid_dataset=valid_dataset,
+                             train_metrics=train_metrics,
+                             valid_metrics=valid_metrics,
+                             best_state='acc')
         self.criterion = tf.keras.losses.SparseCategoricalCrossentropy(
             from_logits=True)
         self.optim = tf.keras.optimizers.Adam(FLAGS.lr,
@@ -52,9 +57,10 @@ class ClassificationRunner(runner.Runner):
             logits = self.model(x)
             loss = self.criterion(y, logits)
 
+        probs = tf.nn.softmax(logits)
         grads = tape.gradient(loss, self.model.trainable_weights)
         self.optim.apply_gradients(zip(grads, self.model.trainable_weights))
-        return {'train_loss': [loss]}
+        return {'loss': [loss], 'acc': [y, probs]}
 
     @tf.function
     def validate_step(self, x, y):
@@ -67,7 +73,7 @@ class ClassificationRunner(runner.Runner):
         """
         logits = self.model(x)
         probs = tf.nn.softmax(logits)
-        return {'valid_loss': [y, logits], 'valid_acc': [y, probs]}
+        return {'loss': [y, logits], 'acc': [y, probs]}
 
     @tf.function
     def inference(self, dataset):
