@@ -4,6 +4,7 @@ import numpy as np
 from tqdm.auto import tqdm
 from absl import flags, logging
 import tensorflow as tf
+from tensorflow.python.eager import profiler
 
 FLAGS = flags.FLAGS
 
@@ -55,7 +56,12 @@ class Runner:
             self.matrics_manager.reset()
             # train one epoch
             for step, (x_batch, y_batch) in enumerate(self.train_dataset):
-                metrics = self.train_step(x_batch, y_batch)
+                if FLAGS.profile:
+                    with profiler.Profiler(
+                            os.path.join(FLAGS.log_path, 'profile')):
+                        metrics = self.train_step(x_batch, y_batch)
+                else:
+                    metrics = self.train_step(x_batch, y_batch)
                 self.matrics_manager.update(metrics, training=True)
                 self.train_pbar.update(1)
             # validate one epoch

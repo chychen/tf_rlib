@@ -45,6 +45,7 @@ def run(main):
     main(None)
 
 
+flags.DEFINE_bool('profile', False, 'use TensorBoard profiler?')
 flags.DEFINE_string('task', 'Classification', 'what is your task?')
 flags.DEFINE_string('log_path', '/tmp/{}/log'.format(current_time),
                     'path for logging files')  # save on local is faster

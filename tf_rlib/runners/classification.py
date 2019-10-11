@@ -11,7 +11,7 @@ FLAGS = flags.FLAGS
 class ClassificationRunner(runner.Runner):
     """
     TODO:
-        AdamW, Lookahead, MultiGPU, tensorboard, metrics, WeightDecay, mixup
+        AdamW, Lookahead, MultiGPU, metrics, WeightDecay, mixup
     """
     def __init__(self, train_dataset, valid_dataset=None):
         self.model = PyramidNet()
