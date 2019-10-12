@@ -53,9 +53,7 @@ class PyramidNet(models.Model):
         self.act = layers.Act()
         self.gpool = layers.GlobalPooling()
         self.flatten = tf.keras.layers.Flatten()
-        self.dense = tf.keras.layers.Dense(self.out_dim,
-                                           activation=None,
-                                           use_bias=True)
+        self.dense = layers.Dense(self.out_dim, activation=None, use_bias=True)
 
     def _get_block_filters(self):
         self.block_counter = self.block_counter + 1

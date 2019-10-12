@@ -1,15 +1,17 @@
 import os
 import sys
 import threading
+from pytz import timezone
 import datetime
-current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+current_time = datetime.datetime.now(
+    timezone('Asia/Taipei')).strftime("%Y%m%d-%H%M%S")
 import tensorflow as tf
 tf.get_logger().setLevel('WARNING')
 from tensorboard import program
 from absl import app
 from absl import flags, logging
 from tf_rlib.utils.ipython import isnotebook
-from tf_rlib import blocks, layers, utils, models
+from tf_rlib import blocks, datasets, layers, models, research, runners, utils
 
 # logging
 logging.set_verbosity(logging.INFO)
@@ -29,6 +31,9 @@ def run(main):
         app.run(lambda _: 0)
     except:
         print('Done')
+
+    os.environ["CUDA_VISIBLE_DEVICES"] = FLAGS.gpus
+
     if not os.path.exists(FLAGS.log_path):
         os.makedirs(FLAGS.log_path)
     logging.get_absl_handler().use_absl_log_file(FLAGS.exp_name,
@@ -46,6 +51,8 @@ def run(main):
 
 
 flags.DEFINE_bool('profile', False, 'use TensorBoard profiler?')
+flags.DEFINE_string('gpus', '0', 'os.environ[\'CUDA_VISIBLE_DEVICES\']=?')
+flags.DEFINE_bool('amp', False, 'use Automatically Mixed Precision?')
 flags.DEFINE_string('task', 'Classification', 'what is your task?')
 flags.DEFINE_string('log_path', '/tmp/{}/log'.format(current_time),
                     'path for logging files')  # save on local is faster
@@ -63,6 +70,8 @@ flags.DEFINE_integer(
 flags.DEFINE_float('bn_momentum', 0.9, 'momentum for BatchNormalization')
 flags.DEFINE_float('bn_epsilon', 1e-5, 'epsilon for BatchNormalization')
 
+flags.DEFINE_string('kernel_initializer', 'he_normal', 'kernel_initializer')
+flags.DEFINE_string('bias_initializer', 'zeros', 'bias_initializer')
 flags.DEFINE_string('conv_norm', 'BatchNormalization',
                     'normalization function name')
 flags.DEFINE_string('conv_pooling', 'AveragePooling',
