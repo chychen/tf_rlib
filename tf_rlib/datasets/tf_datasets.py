@@ -4,6 +4,7 @@ from absl import flags
 
 FLAGS = flags.FLAGS
 
+
 def get_cifar10():
     train_data, valid_data = tf.keras.datasets.cifar10.load_data()
     mean = train_data[0].mean()
@@ -12,7 +13,7 @@ def get_cifar10():
     valid_data_x = (valid_data[0].astype(np.float32) - mean) / stddev
     train_data_y = train_data[1]
     valid_data_y = valid_data[1]
-    
+
     @tf.function
     def augmentation(x, y, pad=4):
         x = tf.pad(x, [[0, 0], [pad, pad], [pad, pad], [0, 0]])
@@ -28,9 +29,11 @@ def get_cifar10():
         (train_data_x, train_data_y))
     valid_dataset = tf.data.Dataset.from_tensor_slices(
         (valid_data_x, valid_data_y))
-    train_dataset = train_dataset.batch(FLAGS.bs, drop_remainder=True).map(augmentation, num_parallel_calls=tf.data.experimental.AUTOTUNE).cache().shuffle(50000).prefetch(
-                buffer_size=tf.data.experimental.AUTOTUNE)
+    train_dataset = train_dataset.batch(FLAGS.bs, drop_remainder=True).map(
+        augmentation,
+        num_parallel_calls=tf.data.experimental.AUTOTUNE).cache().shuffle(
+            50000).prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
     valid_dataset = valid_dataset.batch(
-        FLAGS.bs, drop_remainder=False).prefetch(
+        FLAGS.bs, drop_remainder=False).cache().prefetch(
             buffer_size=tf.data.experimental.AUTOTUNE)
     return [train_dataset, valid_dataset]
