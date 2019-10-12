@@ -16,14 +16,18 @@ class Conv(tf.keras.layers.Layer):
                                    ks,
                                    strides=strides,
                                    padding=FLAGS.padding,
-                                   use_bias=use_bias)
+                                   use_bias=use_bias,
+                                   kernel_initializer=FLAGS.kernel_initializer,
+                                   bias_initializer=FLAGS.bias_initializer)
         else:
             conv_op = layers.__dict__['Conv{}D'.format(FLAGS.dim)]
             self.conv_op = conv_op(filters,
                                    ks,
                                    strides=strides,
                                    padding=FLAGS.padding,
-                                   use_bias=use_bias)
+                                   use_bias=use_bias,
+                                   kernel_initializer=FLAGS.kernel_initializer,
+                                   bias_initializer=FLAGS.bias_initializer)
 
     def call(self, x):
         x = self.conv_op(x)
