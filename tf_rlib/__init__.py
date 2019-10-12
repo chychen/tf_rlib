@@ -41,9 +41,10 @@ def run(main):
 
     # new thread for tensorboard, avoiding from annoying logging msg on notebook
     def launchTensorBoard():
-        os.system('tensorboard --logdir {} --bind_all'.format(FLAGS.log_path))
+        os.system('tensorboard --logdir {} --bind_all --port {}'.format(FLAGS.log_path, FLAGS.port))
         return
 
+    # NOTE: this is a fire-and-forget thread
     t = threading.Thread(target=launchTensorBoard, args=([]))
     t.start()
 
@@ -51,7 +52,8 @@ def run(main):
 
 
 flags.DEFINE_bool('profile', False, 'use TensorBoard profiler?')
-flags.DEFINE_string('gpus', '0', 'os.environ[\'CUDA_VISIBLE_DEVICES\']=?')
+flags.DEFINE_string('gpus', '1', 'os.environ[\'CUDA_VISIBLE_DEVICES\']=?')
+flags.DEFINE_integer('port', '6006', 'port for Tensorbaord')
 flags.DEFINE_bool('amp', False, 'use Automatically Mixed Precision?')
 flags.DEFINE_string('task', 'Classification', 'what is your task?')
 flags.DEFINE_string('log_path', '/tmp/{}/log'.format(current_time),

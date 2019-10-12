@@ -58,7 +58,7 @@ class ClassificationRunner(runner.Runner):
             losses (dict)
         """
         with tf.GradientTape() as tape:
-            logits = self.model(x)
+            logits = self.model(x, training=True)
             loss = self.criterion(y, logits)
 
         grads = tape.gradient(loss, self.model.trainable_weights)
@@ -84,7 +84,7 @@ class ClassificationRunner(runner.Runner):
         Returns:
             metrics (dict)
         """
-        logits = self.model(x)
+        logits = self.model(x, training=False)
         probs = tf.nn.softmax(logits)
         return {'loss': [y, logits], 'acc': [y, probs]}
 
