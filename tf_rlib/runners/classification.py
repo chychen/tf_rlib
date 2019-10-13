@@ -28,9 +28,14 @@ class ClassificationRunner(runner.Runner):
         }
         self.loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(
             from_logits=True)
-        if FLAGS.amp:
-            self.optim = tf.keras.mixed_precision.experimental.LossScaleOptimizer(
-                self.optim, "dynamic")
+        self.optim = tf.keras.optimizers.SGD(0.1, 0.9)
+#         self.optim = tf.keras.optimizers.Adam(FLAGS.lr,
+#                                               beta_1=FLAGS.adam_beta_1,
+#                                               beta_2=FLAGS.adam_beta_2,
+#                                               epsilon=FLAGS.adam_epsilon)
+#         if FLAGS.amp:
+#             self.optim = tf.keras.mixed_precision.experimental.LossScaleOptimizer(
+#                 self.optim, "dynamic")
 
         super(ClassificationRunner, self).__init__({'pyramidnet': self.model},
                                                    train_dataset,
@@ -39,26 +44,19 @@ class ClassificationRunner(runner.Runner):
                                                    valid_metrics=valid_metrics,
                                                    best_state='acc')
 
-    def begin_fit_callback(self, init_lr):
-        #         self.lr_scheduler = tf.keras.experimental.CosineDecay(init_lr, None)
-        self.optim = tf.keras.optimizers.SGD(init_lr, 0.9)
-
-
-#         self.optim = tf.keras.optimizers.Adam(init_lr,
-#                                               beta_1=FLAGS.adam_beta_1,
-#                                               beta_2=FLAGS.adam_beta_2,
-#                                               epsilon=FLAGS.adam_epsilon)
+    def begin_fit_callback(self, lr):
+#         self.lr_scheduler = tf.keras.experimental.CosineDecay(lr, None)
+        self.optim.lr = lr
 
     def begin_epoch_callback(self, epoch_id, epochs):
-        #         self.lr_scheduler.decay_steps = epochs
-        #         self.optim.lr = self.lr_scheduler(epoch_id)
+#         self.lr_scheduler.decay_steps = epochs
+#         self.optim.lr = self.lr_scheduler(epoch_id)
         if epoch_id > 0 and epoch_id <= 100:
             self.optim.lr = 1e-1
         elif epoch_id > 100 and epoch_id <= 200:
             self.optim.lr = 1e-2
         elif epoch_id > 200:
             self.optim.lr = 1e-3
-
         self.log_scalar('lr', self.optim.lr, epoch_id, training=True)
 
     @tf.function

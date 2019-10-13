@@ -28,10 +28,6 @@ def get_cifar10():
         (train_data_x, train_data_y))
     valid_dataset = tf.data.Dataset.from_tensor_slices(
         (valid_data_x, valid_data_y))
-    train_dataset = tf.data.Dataset.from_tensor_slices(
-        (train_data_x, train_data_y))
-    valid_dataset = tf.data.Dataset.from_tensor_slices(
-        (valid_data_x, valid_data_y))
     train_dataset = train_dataset.batch(FLAGS.bs, drop_remainder=True).map(
         augmentation,
         num_parallel_calls=tf.data.experimental.AUTOTUNE).cache().shuffle(

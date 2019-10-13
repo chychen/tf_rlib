@@ -3,60 +3,74 @@ import sys
 import threading
 from pytz import timezone
 import datetime
-current_time = datetime.datetime.now(
-    timezone('Asia/Taipei')).strftime("%Y%m%d-%H%M%S")
 import tensorflow as tf
-tf.get_logger().setLevel('WARNING')
 from absl import app
 from absl import flags, logging
 from tf_rlib.utils.ipython import isnotebook
 from tf_rlib import blocks, datasets, layers, models, research, runners, utils
 
 # logging
+tf.get_logger().setLevel('WARNING')
 logging.set_verbosity(logging.INFO)
 logging.set_stderrthreshold(logging.INFO)
+# envs
+current_time = datetime.datetime.now(
+    timezone('Asia/Taipei')).strftime("%Y%m%d-%H%M%S")
+
+#############################
+########### FLAGS ###########
+#############################
 
 FLAGS = flags.FLAGS
 
-# def define_flags():
-#     if FLAGS.task == 'Classification':
-#         pass
-#     else:
-#         raise NotImplementedError
-
+# General settings
 flags.DEFINE_bool('profile', False, 'use TensorBoard profiler?')
-flags.DEFINE_string('gpus', '0', 'os.environ[\'CUDA_VISIBLE_DEVICES\']=?')
 flags.DEFINE_integer('port', '6006', 'port for Tensorbaord')
-flags.DEFINE_bool('amp', False, 'use Automatically Mixed Precision?')
-flags.DEFINE_string('task', 'Classification', 'what is your task?')
 flags.DEFINE_string('log_path', '/results/{}/log'.format(current_time),
-                    'path for logging files')  # save on local is faster
+                    'path for logging files')  # save in local is faster
 flags.DEFINE_string('save_path', '/results/{}/ckpt'.format(current_time),
-                    'path for ckpt files')  # save on local is faster
+                    'path for ckpt files')  # save in local is faster
 flags.DEFINE_string('exp_name', 'default', 'name for this experiment')
-flags.DEFINE_float('lr', 1e-3, 'Initial Learning Rate')
-flags.DEFINE_integer('bs', 128, 'Batch Size')
-flags.DEFINE_float('l1', 0.0, 'l1 regularizer')
-flags.DEFINE_float('l2', 1e-4, 'l2 regularizer')
+
+# Speedup Options
+flags.DEFINE_string('gpus', '0', 'os.environ[\'CUDA_VISIBLE_DEVICES\']=?')
+flags.DEFINE_bool('amp', False, 'use Automatically Mixed Precision?')
+
+# I/O
 flags.DEFINE_integer('out_dim', 10, 'Model output dimensions')
-flags.DEFINE_string('padding', 'same', 'padding flag for conv, downsample')
 flags.DEFINE_integer(
     'dim', 2,
     'Input Dimensions will decide all the dimensions of operations automatically.'
 )
-flags.DEFINE_float('bn_momentum', 0.9, 'momentum for BatchNormalization')
-flags.DEFINE_float('bn_epsilon', 1e-5, 'epsilon for BatchNormalization')
 
+# General Hyper-perameters
+## Optimizer
+flags.DEFINE_float('lr', 1e-3, 'Initial Learning Rate')
+flags.DEFINE_integer('bs', 128, 'Batch Size')
+flags.DEFINE_float('adam_beta_1', 0.9, 'adam beta_1')
+flags.DEFINE_float('adam_beta_2', 0.999, 'adam beta_2')
+flags.DEFINE_float('adam_epsilon', 1e-8,
+                   'adam epsilon, the larger epsilon, the closer to SGD')
+## Regularizer
+flags.DEFINE_float('l1', 0.0, 'l1 regularizer')
+flags.DEFINE_float('l2', 1e-4, 'l2 regularizer')
+## Conv
 flags.DEFINE_string('kernel_initializer', 'he_normal', 'kernel_initializer')
 flags.DEFINE_string('bias_initializer', 'zeros', 'bias_initializer')
+flags.DEFINE_string('padding', 'same', 'padding flag for conv, downsample')
+flags.DEFINE_string('conv_act', 'ReLU', 'activation function name')
+## BN
 flags.DEFINE_string('conv_norm', 'BatchNormalization',
                     'normalization function name')
+flags.DEFINE_float('bn_momentum', 0.9, 'momentum for BatchNormalization')
+flags.DEFINE_float('bn_epsilon', 1e-5, 'epsilon for BatchNormalization')
+## Pooling
 flags.DEFINE_string('conv_pooling', 'AveragePooling',
                     'pooling function name for shortcut')
 flags.DEFINE_string('global_pooling', 'GlobalAveragePooling',
                     'global_pooling function name before dense layer')
-flags.DEFINE_string('conv_act', 'ReLU', 'activation function name')
 
+# Model Architecture
 flags.DEFINE_integer(
     'model_alpha', 200,
     '110 layers ranged from 48 to 270 in paper, seems larger is better but parameters inefficiency'
@@ -66,13 +80,10 @@ flags.DEFINE_bool('bottleneck', True,
                   'True for ResBottleneck, False for ResBlock')
 flags.DEFINE_string('filters_mode', 'small',
                     'small for cifar10, large for imagenet')
-# runner
-# flags.DEFINE_string('best_state', 'acc',
-#                     'runner use best_state to save best ckpt.')
-flags.DEFINE_float('adam_beta_1', 0.9, 'adam beta_1')
-flags.DEFINE_float('adam_beta_2', 0.999, 'adam beta_2')
-flags.DEFINE_float('adam_epsilon', 1e-8,
-                   'adam epsilon, the larger epsilon, the closer to SGD')
+
+#############################
+########### RLIBS ###########
+#############################
 
 # remove jupyter related arguments
 if isnotebook():
@@ -82,11 +93,11 @@ if isnotebook():
 try:
     app.run(lambda _: 0)
 except:
-    print('init flags')
+    logging.info('init flags')
 
 # envs
 os.environ["CUDA_VISIBLE_DEVICES"] = FLAGS.gpus
-logging.info('CUDA_VISIBLE_DEVICES={}'.format(LAGS.gpus))
+logging.info('CUDA_VISIBLE_DEVICES={}'.format(FLAGS.gpus))
 
 # logging
 if not os.path.exists(FLAGS.log_path):

@@ -79,10 +79,12 @@ class Runner:
     def begin_fit_callback(self):
         pass
 
-    def begin_epoch_callback(self, epoch_id, epochs, init_lr):
+    def begin_epoch_callback(self, epoch_id, epochs, lr):
         pass
 
-    def fit(self, epochs, lr=FLAGS.lr):
+    def fit(self, epochs, lr=None):
+        if lr is None:
+            lr = FLAGS.lr
         self.begin_fit_callback(lr)
         self.train_pbar = tqdm(desc='train',
                                total=self.train_dataset_size,

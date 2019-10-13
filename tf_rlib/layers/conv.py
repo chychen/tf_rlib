@@ -20,7 +20,7 @@ class Conv(tf.keras.layers.Layer):
                 use_bias=use_bias,
                 kernel_initializer=FLAGS.kernel_initializer,
                 bias_initializer=FLAGS.bias_initializer,
-                kernel_regularizer=tf.keras.regularizers.l1_l2(l1=FLAGS.l2,
+                kernel_regularizer=tf.keras.regularizers.l1_l2(l1=FLAGS.l1,
                                                                l2=FLAGS.l2))
         else:
             conv_op = layers.__dict__['Conv{}D'.format(FLAGS.dim)]
@@ -32,7 +32,7 @@ class Conv(tf.keras.layers.Layer):
                 use_bias=use_bias,
                 kernel_initializer=FLAGS.kernel_initializer,
                 bias_initializer=FLAGS.bias_initializer,
-                kernel_regularizer=tf.keras.regularizers.l1_l2(l1=FLAGS.l2,
+                kernel_regularizer=tf.keras.regularizers.l1_l2(l1=FLAGS.l1,
                                                                l2=FLAGS.l2))
 
     def call(self, x):

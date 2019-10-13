@@ -6,10 +6,12 @@ sys.path.append('..')
 import tf_rlib
 from tf_rlib.runners import ClassificationRunner
 
+
 def main():
     datasets = tf_rlib.datasets.get_cifar10()
     runner = ClassificationRunner(*datasets)
     runner.fit(300)
-    
+
+
 if __name__ == '__main__':
     main()
