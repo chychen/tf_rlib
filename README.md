@@ -45,8 +45,11 @@
         - classification.py: TODO
     - utils:
         - ipython.py: apis related to notebook.
-        - tensorboard.py: Manager for Tensorboard 
     - research: not yet best practice
     - datasets: dataloader, preprocessing, normalization
         
   
+### Note for FLAGS
+
+- profile(bool): default=False, use to profile the training efficiency.
+- log_path(str): default='/tmp/{time}/log', find all training logs there.
