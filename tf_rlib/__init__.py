@@ -7,7 +7,6 @@ current_time = datetime.datetime.now(
     timezone('Asia/Taipei')).strftime("%Y%m%d-%H%M%S")
 import tensorflow as tf
 tf.get_logger().setLevel('WARNING')
-from tensorboard import program
 from absl import app
 from absl import flags, logging
 from tf_rlib.utils.ipython import isnotebook
@@ -24,32 +23,6 @@ FLAGS = flags.FLAGS
 #         pass
 #     else:
 #         raise NotImplementedError
-
-
-def run(main):
-    try:
-        app.run(lambda _: 0)
-    except:
-        print('Done')
-
-    os.environ["CUDA_VISIBLE_DEVICES"] = FLAGS.gpus
-
-    if not os.path.exists(FLAGS.log_path):
-        os.makedirs(FLAGS.log_path)
-    logging.get_absl_handler().use_absl_log_file(FLAGS.exp_name,
-                                                 log_dir=FLAGS.log_path)
-
-    # new thread for tensorboard, avoiding from annoying logging msg on notebook
-    def launchTensorBoard():
-        os.system('tensorboard --logdir {} --bind_all --port {}'.format(FLAGS.log_path, FLAGS.port))
-        return
-
-    # NOTE: this is a fire-and-forget thread
-    t = threading.Thread(target=launchTensorBoard, args=([]))
-    t.start()
-
-    main(None)
-
 
 flags.DEFINE_bool('profile', False, 'use TensorBoard profiler?')
 flags.DEFINE_string('gpus', '0', 'os.environ[\'CUDA_VISIBLE_DEVICES\']=?')
@@ -101,10 +74,30 @@ flags.DEFINE_float('adam_beta_2', 0.999, 'adam beta_2')
 flags.DEFINE_float('adam_epsilon', 1e-8,
                    'adam epsilon, the larger epsilon, the closer to SGD')
 
+# remove jupyter related arguments
 if isnotebook():
-    sys.argv = sys.argv[:1]  # remove jupyter related arguments
-    run(lambda _: 0)
+    sys.argv = sys.argv[:1]
 
-#     flags.register_validator('flag',
-#                          lambda v: True,
-#                          message='Flag validation failed')
+# init FLAGS
+try:
+    app.run(lambda _: 0)
+except:
+    print('init flags')
+
+# envs
+os.environ["CUDA_VISIBLE_DEVICES"] = FLAGS.gpus
+
+# logging
+if not os.path.exists(FLAGS.log_path):
+    os.makedirs(FLAGS.log_path)
+logging.get_absl_handler().use_absl_log_file(FLAGS.exp_name,
+                                             log_dir=FLAGS.log_path)
+
+# new thread for tensorboard, avoiding from annoying logging msg on notebook
+def launchTensorBoard():
+    os.system('tensorboard --logdir {} --bind_all --port {}'.format(FLAGS.log_path, FLAGS.port))
+    return
+# NOTE: this is a fire-and-forget thread
+logging.info('launching Tensorboard at: {} port: {} ...\n(this is a fire-and-forget thread so no error message if failed)'.format(FLAGS.log_path, FLAGS.port))
+t = threading.Thread(target=launchTensorBoard, args=([]))
+t.start()
