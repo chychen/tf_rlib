@@ -1,18 +1,21 @@
 import tensorflow as tf
 import numpy as np
-from absl import flags
+from absl import flags, logging
 
 FLAGS = flags.FLAGS
 
 
 def get_cifar10():
     train_data, valid_data = tf.keras.datasets.cifar10.load_data()
-    mean = train_data[0].mean()
-    stddev = train_data[0].std()
-    train_data_x = (train_data[0].astype(np.float32) - mean) / stddev
-    valid_data_x = (valid_data[0].astype(np.float32) - mean) / stddev
+    train_data_x = train_data[0].astype(np.float32)
+    valid_data_x = valid_data[0].astype(np.float32)
+    mean = train_data_x.mean(axis=(0,1,2))
+    stddev = train_data_x.std(axis=(0,1,2))
+    train_data_x = (train_data_x - mean) / stddev
+    valid_data_x = (valid_data_x - mean) / stddev
     train_data_y = train_data[1]
     valid_data_y = valid_data[1]
+    logging.info('mean:{}, std:{}'.format(mean, stddev))
 
     @tf.function
     def augmentation(x, y, pad=4):

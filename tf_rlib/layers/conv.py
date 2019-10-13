@@ -18,7 +18,8 @@ class Conv(tf.keras.layers.Layer):
                                    padding=FLAGS.padding,
                                    use_bias=use_bias,
                                    kernel_initializer=FLAGS.kernel_initializer,
-                                   bias_initializer=FLAGS.bias_initializer)
+                                   bias_initializer=FLAGS.bias_initializer,
+                                   kernel_regularizer=tf.keras.regularizers.l1_l2(l1=FLAGS.l2, l2=FLAGS.l2))
         else:
             conv_op = layers.__dict__['Conv{}D'.format(FLAGS.dim)]
             self.conv_op = conv_op(filters,
@@ -27,7 +28,8 @@ class Conv(tf.keras.layers.Layer):
                                    padding=FLAGS.padding,
                                    use_bias=use_bias,
                                    kernel_initializer=FLAGS.kernel_initializer,
-                                   bias_initializer=FLAGS.bias_initializer)
+                                   bias_initializer=FLAGS.bias_initializer,
+                                   kernel_regularizer=tf.keras.regularizers.l1_l2(l1=FLAGS.l2, l2=FLAGS.l2))
 
     def call(self, x):
         x = self.conv_op(x)

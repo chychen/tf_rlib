@@ -52,7 +52,7 @@ def run(main):
 
 
 flags.DEFINE_bool('profile', False, 'use TensorBoard profiler?')
-flags.DEFINE_string('gpus', '1', 'os.environ[\'CUDA_VISIBLE_DEVICES\']=?')
+flags.DEFINE_string('gpus', '0', 'os.environ[\'CUDA_VISIBLE_DEVICES\']=?')
 flags.DEFINE_integer('port', '6006', 'port for Tensorbaord')
 flags.DEFINE_bool('amp', False, 'use Automatically Mixed Precision?')
 flags.DEFINE_string('task', 'Classification', 'what is your task?')
@@ -63,6 +63,8 @@ flags.DEFINE_string('save_path', '/tmp/{}/ckpt'.format(current_time),
 flags.DEFINE_string('exp_name', 'default', 'name for this experiment')
 flags.DEFINE_float('lr', 1e-3, 'Initial Learning Rate')
 flags.DEFINE_integer('bs', 128, 'Batch Size')
+flags.DEFINE_float('l1', 0.0, 'l1 regularizer')
+flags.DEFINE_float('l2', 1e-4, 'l2 regularizer')
 flags.DEFINE_integer('out_dim', 10, 'Model output dimensions')
 flags.DEFINE_string('padding', 'same', 'padding flag for conv, downsample')
 flags.DEFINE_integer(
