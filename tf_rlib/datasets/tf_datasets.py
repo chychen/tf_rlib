@@ -9,8 +9,8 @@ def get_cifar10():
     train_data, valid_data = tf.keras.datasets.cifar10.load_data()
     train_data_x = train_data[0].astype(np.float32)
     valid_data_x = valid_data[0].astype(np.float32)
-    mean = train_data_x.mean(axis=(0,1,2))
-    stddev = train_data_x.std(axis=(0,1,2))
+    mean = train_data_x.mean(axis=(0, 1, 2))
+    stddev = train_data_x.std(axis=(0, 1, 2))
     train_data_x = (train_data_x - mean) / stddev
     valid_data_x = (valid_data_x - mean) / stddev
     train_data_y = train_data[1]

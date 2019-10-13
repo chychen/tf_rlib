@@ -13,7 +13,6 @@ FLAGS = flags.FLAGS
 class Runner:
     def __init__(self,
                  models,
-                 optims,
                  train_dataset,
                  valid_dataset=None,
                  save_path=None,
@@ -32,7 +31,6 @@ class Runner:
                 tf.keras.Input(shape=train_dataset.element_spec[0].shape[1:],
                                dtype=tf.float32))
             logging.info(self.model.num_params)
-        self.optims = optims
         self.epoch = 0
         self.step = 0
         self.train_dataset = train_dataset
@@ -52,10 +50,40 @@ class Runner:
             for k, v in valid_metrics.items():
                 self.matrics_manager.add_metrics(k, v, training=False)
 
-    def set_epoch_lr_callback(self, epoch_id, epochs):
+    @tf.function
+    def train_step(self, x, y):
+        """
+        Args:
+            x (batch): mini batch data
+            y (batch): mini batch label
+        Returns:
+            losses (dict)
+        """
+        raise NotImplementedError
+
+    @tf.function
+    def validate_step(self, x, y):
+        """
+        Args:
+            x (batch): mini batch data
+            y (batch): mini batch label
+        Returns:
+            metrics (dict)
+        """
+        raise NotImplementedError
+
+    @tf.function
+    def inference(self, dataset):
+        raise NotImplementedError
+
+    def begin_fit_callback(self):
         pass
 
-    def fit(self, epochs):
+    def begin_epoch_callback(self, epoch_id, epochs, init_lr):
+        pass
+
+    def fit(self, epochs, lr=FLAGS.lr):
+        self.begin_fit_callback(lr)
         self.train_pbar = tqdm(desc='train',
                                total=self.train_dataset_size,
                                leave=False)
@@ -63,18 +91,13 @@ class Runner:
                                total=self.valid_dataset_size,
                                leave=False)
         for _ in range(epochs):
+            self.begin_epoch_callback(self.epoch, epochs)
             self.epoch = self.epoch + 1
             # progress bars
             self.train_pbar.reset(self.train_dataset_size)
             self.valid_pbar.reset(self.valid_dataset_size)
             self.matrics_manager.reset()
-            # optimizers learning rate scheduler
-            self.set_epoch_lr_callback(self.epoch, epochs)
-            for key, optim in self.optims.items():
-                self.matrics_manager.add_scalar(key,
-                                                optim.lr,
-                                                self.epoch,
-                                                training=True)
+            # begin_epoch_callback
             # train one epoch
             for _, (x_batch, y_batch) in enumerate(self.train_dataset):
                 self.step = self.step + 1
@@ -125,35 +148,12 @@ class Runner:
     def load_best(self):
         self.load(os.path.join(self.save_path, 'best'))
 
+    def log_scalar(self, key, value, step, training):
+        self.matrics_manager.add_scalar(key, value, step, training)
+
     def _get_size(self, dataset):
         num_elements = 0
         if dataset is not None:
             for _ in dataset:
                 num_elements += 1
         return num_elements
-
-    @tf.function
-    def train_step(self, x, y):
-        """
-        Args:
-            x (batch): mini batch data
-            y (batch): mini batch label
-        Returns:
-            losses (dict)
-        """
-        raise NotImplementedError
-
-    @tf.function
-    def validate_step(self, x, y):
-        """
-        Args:
-            x (batch): mini batch data
-            y (batch): mini batch label
-        Returns:
-            metrics (dict)
-        """
-        raise NotImplementedError
-
-    @tf.function
-    def inference(self, dataset):
-        raise NotImplementedError

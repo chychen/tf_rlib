@@ -29,9 +29,9 @@ flags.DEFINE_string('gpus', '0', 'os.environ[\'CUDA_VISIBLE_DEVICES\']=?')
 flags.DEFINE_integer('port', '6006', 'port for Tensorbaord')
 flags.DEFINE_bool('amp', False, 'use Automatically Mixed Precision?')
 flags.DEFINE_string('task', 'Classification', 'what is your task?')
-flags.DEFINE_string('log_path', '/tmp/{}/log'.format(current_time),
+flags.DEFINE_string('log_path', '/results/{}/log'.format(current_time),
                     'path for logging files')  # save on local is faster
-flags.DEFINE_string('save_path', '/tmp/{}/ckpt'.format(current_time),
+flags.DEFINE_string('save_path', '/results/{}/ckpt'.format(current_time),
                     'path for ckpt files')  # save on local is faster
 flags.DEFINE_string('exp_name', 'default', 'name for this experiment')
 flags.DEFINE_float('lr', 1e-3, 'Initial Learning Rate')
@@ -86,6 +86,7 @@ except:
 
 # envs
 os.environ["CUDA_VISIBLE_DEVICES"] = FLAGS.gpus
+logging.info('CUDA_VISIBLE_DEVICES={}'.format(LAGS.gpus))
 
 # logging
 if not os.path.exists(FLAGS.log_path):
@@ -93,11 +94,17 @@ if not os.path.exists(FLAGS.log_path):
 logging.get_absl_handler().use_absl_log_file(FLAGS.exp_name,
                                              log_dir=FLAGS.log_path)
 
+
 # new thread for tensorboard, avoiding from annoying logging msg on notebook
 def launchTensorBoard():
-    os.system('tensorboard --logdir {} --bind_all --port {}'.format(FLAGS.log_path, FLAGS.port))
+    os.system('tensorboard --logdir {} --bind_all --port {}'.format(
+        FLAGS.log_path, FLAGS.port))
     return
+
+
 # NOTE: this is a fire-and-forget thread
-logging.info('launching Tensorboard at: {} port: {} ...\n(this is a fire-and-forget thread so no error message if failed)'.format(FLAGS.log_path, FLAGS.port))
+logging.info(
+    'launching Tensorboard at: {} port: {} ... (this is a fire-and-forget thread so no error message if failed)'
+    .format(FLAGS.log_path, FLAGS.port))
 t = threading.Thread(target=launchTensorBoard, args=([]))
 t.start()
