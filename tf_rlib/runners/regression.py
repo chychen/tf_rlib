@@ -9,55 +9,51 @@ FLAGS = flags.FLAGS
 
 
 class RegressionRunner(runner.Runner):
-    """
-    TODO:
-        AdamW, Lookahead, MultiGPU, WeightDecay, mixup
-    """
+
     def __init__(self, train_dataset, valid_dataset=None):
         self.model = PyramidNet()
         train_metrics = {
-            'loss': tf.keras.metrics.MeanTensor('loss'),
-            'acc': tf.keras.metrics.SparseCategoricalAccuracy('acc')
+            'loss': 
+            tf.keras.metrics.MeanTensor('loss'),
+            'mse':
+            tf.keras.metrics.MeanSquaredError('mse'),
+            'mape':
+            tf.keras.metrics.MeanAbsolutePercentageError('mape'),
+            'mae':
+            tf.keras.metrics.MeanAbsoluteError('mae')
         }
         valid_metrics = {
             'loss':
-            tf.keras.metrics.SparseCategoricalCrossentropy('loss',
-                                                           from_logits=True),
-            'acc':
-            tf.keras.metrics.SparseCategoricalAccuracy('acc')
+            tf.keras.metrics.MeanAbsoluteError('loss'),
+            'mse':
+            tf.keras.metrics.MeanSquaredError('mse'),
+            'mape':
+            tf.keras.metrics.MeanAbsolutePercentageError('mape'),
+            'mae':
+            tf.keras.metrics.MeanAbsoluteError('mae')
         }
-        self.loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(
-            from_logits=True)
-        if FLAGS.amp:
-            self.optim = tf.keras.mixed_precision.experimental.LossScaleOptimizer(
-                self.optim, "dynamic")
+        self.loss_fn = tf.keras.losses.MAE()
+#         self.loss_fn = tf.keras.losses.MSE()
+        self.optim = tf.keras.optimizers.SGD(0.0, 0.9)
 
         super(RegressionRunner, self).__init__({'pyramidnet': self.model},
                                                train_dataset,
                                                valid_dataset=valid_dataset,
                                                train_metrics=train_metrics,
                                                valid_metrics=valid_metrics,
-                                               best_state='acc')
+                                               best_state='mae')
 
-    def begin_fit_callback(self, init_lr):
-        #         self.lr_scheduler = tf.keras.experimental.CosineDecay(init_lr, None)
-        self.optim = tf.keras.optimizers.SGD(init_lr, 0.9)
-
-
-#         self.optim = tf.keras.optimizers.Adam(init_lr,
-#                                               beta_1=FLAGS.adam_beta_1,
-#                                               beta_2=FLAGS.adam_beta_2,
-#                                               epsilon=FLAGS.adam_epsilon)
+    def begin_fit_callback(self, lr):
+        self.init_lr = lr
+        self.lr_scheduler = tf.keras.experimental.CosineDecay(self.init_lr, None)
+        self.optim.lr = self.init_lr
 
     def begin_epoch_callback(self, epoch_id, epochs):
-        #         self.lr_scheduler.decay_steps = epochs
-        #         self.optim.lr = self.lr_scheduler(epoch_id)
-        if epoch_id > 0 and epoch_id <= 100:
-            self.optim.lr = 1e-1
-        elif epoch_id > 100 and epoch_id <= 200:
-            self.optim.lr = 1e-2
-        elif epoch_id > 200:
-            self.optim.lr = 1e-3
+        if epoch_id<FLAGS.warmup:
+            self.optim.lr = epoch_id/FLAGS.warmup * self.init_lr
+        else:
+            self.lr_scheduler.decay_steps = epochs
+            self.optim.lr = self.lr_scheduler(epoch_id)
 
         self.log_scalar('lr', self.optim.lr, epoch_id, training=True)
 
@@ -76,18 +72,10 @@ class RegressionRunner(runner.Runner):
             regularization_loss = tf.math.add_n(self.model.losses)
             total_loss = loss + regularization_loss
 
-            if FLAGS.amp:
-                scaled_loss = self.optim.get_scaled_loss(total_loss)
-                scaled_grads = tape.gradient(scaled_loss,
-                                             self.model.trainable_weights)
-                grads = self.optim.get_unscaled_gradients(scaled_grads)
-            else:
-                grads = tape.gradient(total_loss, self.model.trainable_weights)
-
+        grads = tape.gradient(total_loss, self.model.trainable_weights)
         self.optim.apply_gradients(zip(grads, self.model.trainable_weights))
-        probs = tf.nn.softmax(logits)
 
-        return {'loss': [loss], 'acc': [y, probs]}
+        return {'loss': [loss], 'mse': [y, logits], 'mape': [y, logits], 'mae': [y, logits]}
 
     @tf.function
     def validate_step(self, x, y):
@@ -99,8 +87,7 @@ class RegressionRunner(runner.Runner):
             metrics (dict)
         """
         logits = self.model(x, training=False)
-        probs = tf.nn.softmax(logits)
-        return {'loss': [y, logits], 'acc': [y, probs]}
+        return {'loss': [loss], 'mse': [y, logits], 'mape': [y, logits], 'mae': [y, logits]}
 
     @tf.function
     def inference(self, dataset):

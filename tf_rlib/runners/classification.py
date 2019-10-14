@@ -1,3 +1,12 @@
+""" Features
+- [v] PyramidNet
+- [ ] Warmup LR
+- [ ] CosineAnnealing LR
+- [ ] Mixup
+- [ ] AdamW
+- [ ] Lookahead
+- [v] WeightDecay
+"""
 import tensorflow as tf
 from tf_rlib.models.pyramidnet import PyramidNet
 from tf_rlib.runners import runner
@@ -9,10 +18,7 @@ FLAGS = flags.FLAGS
 
 
 class ClassificationRunner(runner.Runner):
-    """
-    TODO:
-        AdamW, Lookahead, MultiGPU, WeightDecay, mixup
-    """
+
     def __init__(self, train_dataset, valid_dataset=None):
         self.model = PyramidNet()
         train_metrics = {
@@ -28,7 +34,7 @@ class ClassificationRunner(runner.Runner):
         }
         self.loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(
             from_logits=True)
-        self.optim = tf.keras.optimizers.SGD(0.0, 0.9)
+        self.optim = tf.keras.optimizers.SGD(0.0, 0.9, nesterov=True)
 #         self.optim = tf.keras.optimizers.Adam(0.0,
 #                                               beta_1=FLAGS.adam_beta_1,
 #                                               beta_2=FLAGS.adam_beta_2,
@@ -44,19 +50,25 @@ class ClassificationRunner(runner.Runner):
                                                    valid_metrics=valid_metrics,
                                                    best_state='acc')
 
-    def begin_fit_callback(self, lr):
-#         self.lr_scheduler = tf.keras.experimental.CosineDecay(lr, None)
-        self.optim.lr = lr
+#     def begin_fit_callback(self, lr):
+#         self.init_lr = lr
+#         self.lr_scheduler = tf.keras.experimental.CosineDecay(self.init_lr, None)
+#         self.optim.lr = self.init_lr
 
     def begin_epoch_callback(self, epoch_id, epochs):
-#         self.lr_scheduler.decay_steps = epochs
-#         self.optim.lr = self.lr_scheduler(epoch_id)
-        if epoch_id >= 0 and epoch_id < 100:
+#         if epoch_id<FLAGS.warmup:
+#             self.optim.lr = epoch_id/FLAGS.warmup * self.init_lr
+#         else:
+#             self.lr_scheduler.decay_steps = epochs
+#             self.optim.lr = self.lr_scheduler(epoch_id)
+        
+        if epoch_id >= 0 and epoch_id < 150:
             self.optim.lr = 1e-1
-        elif epoch_id >= 100 and epoch_id < 200:
+        elif epoch_id >= 150 and epoch_id < 225:
             self.optim.lr = 1e-2
-        elif epoch_id >= 200:
+        elif epoch_id >= 225:
             self.optim.lr = 1e-3
+
         self.log_scalar('lr', self.optim.lr, epoch_id, training=True)
 
     @tf.function

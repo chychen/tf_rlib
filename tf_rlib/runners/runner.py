@@ -76,7 +76,7 @@ class Runner:
     def inference(self, dataset):
         raise NotImplementedError
 
-    def begin_fit_callback(self):
+    def begin_fit_callback(self, lr):
         pass
 
     def begin_epoch_callback(self, epoch_id, epochs, lr):
