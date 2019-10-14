@@ -15,7 +15,9 @@ class Dense(tf.keras.layers.Layer):
             kernel_initializer=FLAGS.kernel_initializer,
             bias_initializer=FLAGS.bias_initializer,
             kernel_regularizer=tf.keras.regularizers.l1_l2(l1=FLAGS.l1,
-                                                           l2=FLAGS.l2))
+                                                           l2=FLAGS.l2),
+                bias_regularizer=tf.keras.regularizers.l1_l2(l1=FLAGS.l1,
+                                                               l2=FLAGS.l2))
 
     def call(self, x):
         return self.dense_op(x)
