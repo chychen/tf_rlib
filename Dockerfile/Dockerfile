@@ -10,7 +10,7 @@ RUN curl -sL https://deb.nodesource.com/setup_11.x | bash -
 RUN apt install -y nodejs
 RUN jupyter labextension install @jupyter-widgets/jupyterlab-manager
 
-RUN pip install tqdm sklearn yapf pytz
+RUN pip install tqdm sklearn yapf pytz tensorflow_datasets
 
 EXPOSE 6006
 EXPOSE 8888
