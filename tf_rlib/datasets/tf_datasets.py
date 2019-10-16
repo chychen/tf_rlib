@@ -19,7 +19,7 @@ def get_cifar10():
 
     @tf.function
     def augmentation(x, y, pad=4):
-        x = tf.pad(x, [[pad, pad], [pad, pad], [0, 0]])
+        x = tf.image.resize_with_crop_or_pad(x, 32 + pad * 2, 32 + pad * 2)
         x = tf.image.random_crop(x, [32, 32, 3])
         x = tf.image.random_flip_left_right(x)
         return x, y
