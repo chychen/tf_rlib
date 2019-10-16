@@ -9,31 +9,22 @@ FLAGS = flags.FLAGS
 
 
 class RegressionRunner(runner.Runner):
-
     def __init__(self, train_dataset, valid_dataset=None):
         self.model = PyramidNet()
         train_metrics = {
-            'loss': 
-            tf.keras.metrics.MeanTensor('loss'),
-            'mse':
-            tf.keras.metrics.MeanSquaredError('mse'),
-            'mape':
-            tf.keras.metrics.MeanAbsolutePercentageError('mape'),
-            'mae':
-            tf.keras.metrics.MeanAbsoluteError('mae')
+            'loss': tf.keras.metrics.MeanTensor('loss'),
+            'mse': tf.keras.metrics.MeanSquaredError('mse'),
+            'mape': tf.keras.metrics.MeanAbsolutePercentageError('mape'),
+            'mae': tf.keras.metrics.MeanAbsoluteError('mae')
         }
         valid_metrics = {
-            'loss':
-            tf.keras.metrics.MeanAbsoluteError('loss'),
-            'mse':
-            tf.keras.metrics.MeanSquaredError('mse'),
-            'mape':
-            tf.keras.metrics.MeanAbsolutePercentageError('mape'),
-            'mae':
-            tf.keras.metrics.MeanAbsoluteError('mae')
+            'loss': tf.keras.metrics.MeanAbsoluteError('loss'),
+            'mse': tf.keras.metrics.MeanSquaredError('mse'),
+            'mape': tf.keras.metrics.MeanAbsolutePercentageError('mape'),
+            'mae': tf.keras.metrics.MeanAbsoluteError('mae')
         }
         self.loss_fn = tf.keras.losses.MAE()
-#         self.loss_fn = tf.keras.losses.MSE()
+        #         self.loss_fn = tf.keras.losses.MSE()
         self.optim = tf.keras.optimizers.SGD(0.0, 0.9)
 
         super(RegressionRunner, self).__init__({'pyramidnet': self.model},
@@ -45,12 +36,13 @@ class RegressionRunner(runner.Runner):
 
     def begin_fit_callback(self, lr):
         self.init_lr = lr
-        self.lr_scheduler = tf.keras.experimental.CosineDecay(self.init_lr, None)
+        self.lr_scheduler = tf.keras.experimental.CosineDecay(
+            self.init_lr, None)
         self.optim.lr = self.init_lr
 
     def begin_epoch_callback(self, epoch_id, epochs):
-        if epoch_id<FLAGS.warmup:
-            self.optim.lr = epoch_id/FLAGS.warmup * self.init_lr
+        if epoch_id < FLAGS.warmup:
+            self.optim.lr = epoch_id / FLAGS.warmup * self.init_lr
         else:
             self.lr_scheduler.decay_steps = epochs
             self.optim.lr = self.lr_scheduler(epoch_id)
@@ -75,7 +67,12 @@ class RegressionRunner(runner.Runner):
         grads = tape.gradient(total_loss, self.model.trainable_weights)
         self.optim.apply_gradients(zip(grads, self.model.trainable_weights))
 
-        return {'loss': [loss], 'mse': [y, logits], 'mape': [y, logits], 'mae': [y, logits]}
+        return {
+            'loss': [loss],
+            'mse': [y, logits],
+            'mape': [y, logits],
+            'mae': [y, logits]
+        }
 
     @tf.function
     def validate_step(self, x, y):
@@ -87,7 +84,12 @@ class RegressionRunner(runner.Runner):
             metrics (dict)
         """
         logits = self.model(x, training=False)
-        return {'loss': [loss], 'mse': [y, logits], 'mape': [y, logits], 'mae': [y, logits]}
+        return {
+            'loss': [loss],
+            'mse': [y, logits],
+            'mape': [y, logits],
+            'mae': [y, logits]
+        }
 
     @tf.function
     def inference(self, dataset):

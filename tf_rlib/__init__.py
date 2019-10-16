@@ -26,11 +26,13 @@ FLAGS = flags.FLAGS
 # General settings
 flags.DEFINE_bool('profile', False, 'use TensorBoard profiler?')
 flags.DEFINE_integer('port', '6006', 'port for Tensorbaord')
-flags.DEFINE_string('log_path', '/results/{}/log'.format(current_time),
-                    'path for logging files')  # save in local is faster
-flags.DEFINE_string('save_path', '/results/{}/ckpt'.format(current_time),
-                    'path for ckpt files')  # save in local is faster
+flags.DEFINE_string(
+    'local_path', '/results',
+    'tmp folder')  # NOTE: save in local is faster than mounted location
+flags.DEFINE_string('log_path', 'log', 'path for logging files')
+flags.DEFINE_string('save_path', 'ckpt', 'path for ckpt files')
 flags.DEFINE_string('exp_name', 'default', 'name for this experiment')
+flags.DEFINE_string('comment', None, 'any comment?')
 
 # Speedup Options
 flags.DEFINE_string('gpus', '0', 'os.environ[\'CUDA_VISIBLE_DEVICES\']=?')
@@ -56,9 +58,11 @@ flags.DEFINE_float('adam_epsilon', 1e-8,
 flags.DEFINE_float('l1', 0.0, 'l1 regularizer')
 flags.DEFINE_float('l2', 1e-4, 'l2 regularizer')
 ## Conv
-flags.DEFINE_string('kernel_initializer', 'he_normal', 'kernel_initializer')
+flags.DEFINE_string('kernel_initializer', 'he_normal',
+                    'kernel_initializer, such as [he_normal, glorot_uniform]')
 flags.DEFINE_string('bias_initializer', 'zeros', 'bias_initializer')
-flags.DEFINE_string('padding', 'same', 'padding flag for conv, downsample')
+flags.DEFINE_string('padding', 'same',
+                    'same or valid, padding flag for conv, downsample')
 flags.DEFINE_string('conv_act', 'ReLU', 'activation function name')
 ## BN
 flags.DEFINE_string('conv_norm', 'BatchNormalization',
@@ -96,6 +100,16 @@ try:
 except:
     logging.info('init flags')
 
+# rename log/save path
+FLAGS.log_path = os.path.join(FLAGS.local_path, FLAGS.exp_name, current_time,
+                              FLAGS.log_path)
+FLAGS.save_path = os.path.join(FLAGS.local_path, FLAGS.exp_name, current_time,
+                               FLAGS.save_path)
+
+## show all FLAGS
+for flag, value in FLAGS.flag_values_dict().items():
+    logging.info('FLAGS: --{}={}'.format(flag, value))
+
 # envs
 os.environ["CUDA_VISIBLE_DEVICES"] = FLAGS.gpus
 logging.info('CUDA_VISIBLE_DEVICES={}'.format(FLAGS.gpus))
@@ -115,8 +129,7 @@ def launchTensorBoard():
 
 
 # NOTE: this is a fire-and-forget thread
-logging.info(
-    'launching Tensorboard at: {} port: {} ... (this is a fire-and-forget thread so no error message if failed)'
-    .format(FLAGS.log_path, FLAGS.port))
+logging.info('launching tensorboard --logdir {} --bind_all --port {}'.format(
+    FLAGS.log_path, FLAGS.port))
 t = threading.Thread(target=launchTensorBoard, args=([]))
 t.start()

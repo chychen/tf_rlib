@@ -23,8 +23,8 @@ def get_cifar10():
         x = tf.image.random_crop(x, [32, 32, 3])
         x = tf.image.random_flip_left_right(x)
         return x, y
-    
-    
+
+
 #     @tf.function
 #     def augmentation(x, y, pad=4):
 #         bs = tf.shape(x)[0]
@@ -40,6 +40,8 @@ def get_cifar10():
         (train_data_x, train_data_y))
     valid_dataset = tf.data.Dataset.from_tensor_slices(
         (valid_data_x, valid_data_y))
-    train_dataset = train_dataset.cache().shuffle(50000).map(augmentation,num_parallel_calls=tf.data.experimental.AUTOTUNE).batch(FLAGS.bs, drop_remainder=False)
+    train_dataset = train_dataset.cache().shuffle(50000).map(
+        augmentation, num_parallel_calls=tf.data.experimental.AUTOTUNE).batch(
+            FLAGS.bs, drop_remainder=False)
     valid_dataset = valid_dataset.batch(FLAGS.bs, drop_remainder=False).cache()
     return [train_dataset, valid_dataset]

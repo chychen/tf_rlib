@@ -16,13 +16,13 @@ class PyramidNet(models.Model):
             self.in_ks = 3
             self.in_strides = 1
             self.groups = 3
-            self.in_act = False
+            self.in_act_pool = False
         elif self.filters_mode == 'large':  # imagenet
             self.in_filters = 64
             self.in_ks = 7
             self.in_strides = 2
             self.groups = 4
-            self.in_act = True
+            self.in_act_pool = True
         else:
             raise ValueError
         self.depth = FLAGS.depth
@@ -39,10 +39,13 @@ class PyramidNet(models.Model):
 
         self.head = blocks.BasicBlock(self.in_filters,
                                       self.in_ks,
-                                      strides=1,
+                                      strides=self.in_strides,
                                       preact=False,
                                       use_norm=True,
-                                      use_act=self.in_act)
+                                      use_act=self.in_act_pool)
+        if self.in_act_pool:
+            self.in_pool = tf.keras.layers.AveragePooling(
+                pool_size=(3, ) * FLAGS.dim, strides=2, padding=FLAGS.padding)
 
         self.all_groups = [self._build_pyramid_group(group_blocks, strides=1)]
         for _ in range(1, self.groups):
@@ -73,6 +76,8 @@ class PyramidNet(models.Model):
 
     def call(self, x):
         x = self.head(x)
+        if self.in_act_pool:
+            x = self.in_pool(x)
         for group in self.all_groups:
             x = group(x)
         x = self.bn(x)

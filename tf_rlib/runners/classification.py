@@ -18,7 +18,6 @@ FLAGS = flags.FLAGS
 
 
 class ClassificationRunner(runner.Runner):
-
     def __init__(self, train_dataset, valid_dataset=None):
         self.model = PyramidNet()
         train_metrics = {
@@ -35,13 +34,13 @@ class ClassificationRunner(runner.Runner):
         self.loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(
             from_logits=True)
         self.optim = tf.keras.optimizers.SGD(0.0, 0.9, nesterov=True)
-#         self.optim = tf.keras.optimizers.Adam(0.0,
-#                                               beta_1=FLAGS.adam_beta_1,
-#                                               beta_2=FLAGS.adam_beta_2,
-#                                               epsilon=FLAGS.adam_epsilon)
-#         if FLAGS.amp:
-#             self.optim = tf.keras.mixed_precision.experimental.LossScaleOptimizer(
-#                 self.optim, "dynamic")
+        #         self.optim = tf.keras.optimizers.Adam(0.0,
+        #                                               beta_1=FLAGS.adam_beta_1,
+        #                                               beta_2=FLAGS.adam_beta_2,
+        #                                               epsilon=FLAGS.adam_epsilon)
+        #         if FLAGS.amp:
+        #             self.optim = tf.keras.mixed_precision.experimental.LossScaleOptimizer(
+        #                 self.optim, "dynamic")
 
         super(ClassificationRunner, self).__init__({'pyramidnet': self.model},
                                                    train_dataset,
@@ -50,18 +49,19 @@ class ClassificationRunner(runner.Runner):
                                                    valid_metrics=valid_metrics,
                                                    best_state='acc')
 
+
 #     def begin_fit_callback(self, lr):
 #         self.init_lr = lr
 #         self.lr_scheduler = tf.keras.experimental.CosineDecay(self.init_lr, None)
 #         self.optim.lr = self.init_lr
 
     def begin_epoch_callback(self, epoch_id, epochs):
-#         if epoch_id<FLAGS.warmup:
-#             self.optim.lr = epoch_id/FLAGS.warmup * self.init_lr
-#         else:
-#             self.lr_scheduler.decay_steps = epochs
-#             self.optim.lr = self.lr_scheduler(epoch_id)
-        
+        #         if epoch_id<FLAGS.warmup:
+        #             self.optim.lr = epoch_id/FLAGS.warmup * self.init_lr
+        #         else:
+        #             self.lr_scheduler.decay_steps = epochs
+        #             self.optim.lr = self.lr_scheduler(epoch_id)
+
         if epoch_id >= 0 and epoch_id < 150:
             self.optim.lr = 1e-1
         elif epoch_id >= 150 and epoch_id < 225:

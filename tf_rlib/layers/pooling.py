@@ -11,9 +11,10 @@ class Pooling(tf.keras.layers.Layer):
         if FLAGS.conv_pooling == 'AveragePooling' or FLAGS.conv_pooling == 'MaxPooling':
             pooling_op = layers.__dict__[FLAGS.conv_pooling +
                                          '{}D'.format(FLAGS.dim)]
-            self.pooling_op = pooling_op(pool_size=(pool_size, ) * FLAGS.dim,
-                                         strides=None,
-                                         padding=FLAGS.padding)
+            self.pooling_op = pooling_op(
+                pool_size=pool_size,
+                strides=None,  # == pool_size
+                padding=FLAGS.padding)
         else:
             raise ValueError
 
