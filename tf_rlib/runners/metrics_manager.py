@@ -37,7 +37,7 @@ class MetricsManager:
             tf.summary.scalar(key, value, step=epoch)
 
     def show_message(self, epoch, tensorboard=True):
-        self.append_message('epoch: {}  '.format(epoch))
+        self.append_message('\nepoch: {}  '.format(epoch))
         time_cost = time.time() - self.timer
         results = self.get_result()
         tmp_msg = ''
@@ -90,8 +90,8 @@ class MetricsManager:
     def reset(self):
         for key in self.keys:
             for k, v in self.metrics[key].items():
-                if k not in self.metrics[key]:
-                    self.metrics[key][k].reset_states()
+                self.metrics[key][k].reset_states()
+
         self.timer = time.time()
         self.num_data = 0
         self.message = ''
@@ -100,7 +100,7 @@ class MetricsManager:
         old_best_record = self.best_record
         self.best_record = self.best_state_policy(self.best_record, new_record)
         if self.best_record != old_best_record:
-            tmp_msg = 'Best Performance at {}: {:.4f}\n'.format(
+            tmp_msg = 'Best Performance at {}: {:.4f}'.format(
                 self.best_state, self.best_record)
             self.append_message(tmp_msg)
             return True

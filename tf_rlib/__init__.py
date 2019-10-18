@@ -48,6 +48,7 @@ flags.DEFINE_integer(
 # General Hyper-perameters
 ## Optimizer
 flags.DEFINE_float('lr', 1e-3, 'Initial Learning Rate')
+flags.DEFINE_integer('epochs', 300, 'number of epochs for warming up')
 flags.DEFINE_integer('warmup', 5, 'number of epochs for warming up')
 flags.DEFINE_integer('bs', 128, 'Batch Size')
 flags.DEFINE_float('adam_beta_1', 0.9, 'adam beta_1')
