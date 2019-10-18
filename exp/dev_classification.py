@@ -6,12 +6,15 @@ import sys
 sys.path.append('..')
 import tf_rlib
 from tf_rlib.runners import ClassificationRunner
+from absl import flags
+
+FLAGS = flags.FLAGS
 
 
 def main():
     datasets = tf_rlib.datasets.get_cifar10()
     runner = ClassificationRunner(*datasets)
-    runner.fit(FLGAS.epochs, FLAGS.lr)
+    runner.fit(FLAGS.epochs, FLAGS.lr)
 
 
 if __name__ == '__main__':
