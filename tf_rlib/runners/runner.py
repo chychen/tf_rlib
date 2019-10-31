@@ -30,7 +30,7 @@ class Runner:
             _ = model(
                 tf.keras.Input(shape=train_dataset.element_spec[0].shape[1:],
                                dtype=tf.float32))
-            logging.info(self.model.num_params)
+            logging.info('{} model contains {} trainable variables.'.format(key, model.num_params))
         self.epoch = 0
         self.step = 0
         self.train_dataset = train_dataset
@@ -150,6 +150,10 @@ class Runner:
 
     def log_scalar(self, key, value, step, training):
         self.matrics_manager.add_scalar(key, value, step, training)
+        
+    @property
+    def best_state_record(self):
+        return self.matrics_manager.best_record
 
     def _get_size(self, dataset):
         num_elements = 0

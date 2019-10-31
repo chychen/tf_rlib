@@ -10,12 +10,12 @@ class BasicBlock(blocks.Block):
                  preact=False,
                  use_norm=True,
                  use_act=True,
+                 use_bias=False,
                  transpose=False):
         super(BasicBlock, self).__init__(filters, strides=strides)
         self.preact = preact
         self.use_norm = use_norm
         self.use_act = use_act
-        use_bias = False if self.preact else True
         if self.use_norm:
             self.bn = layers.Norm()
         if self.use_act:

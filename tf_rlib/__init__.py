@@ -9,10 +9,6 @@ from absl import flags, logging
 from tf_rlib.utils.ipython import isnotebook
 from tf_rlib import blocks, datasets, layers, models, research, runners, utils
 
-# logging
-tf.get_logger().setLevel('WARNING')
-logging.set_verbosity(logging.INFO)
-logging.set_stderrthreshold(logging.INFO)
 # envs
 current_time = datetime.datetime.now(
     timezone('Asia/Taipei')).strftime("%Y%m%d-%H%M%S")
@@ -33,9 +29,10 @@ flags.DEFINE_string('log_path', 'log', 'path for logging files')
 flags.DEFINE_string('save_path', 'ckpt', 'path for ckpt files')
 flags.DEFINE_string('exp_name', 'default', 'name for this experiment')
 flags.DEFINE_string('comment', None, 'any comment?')
+flags.DEFINE_string('benchmark_runner', None, 'any comment?')
 
 # Speedup Options
-flags.DEFINE_string('gpus', '0', 'os.environ[\'CUDA_VISIBLE_DEVICES\']=?')
+flags.DEFINE_string('gpus', '0,1,2,3,4,5,6,7', 'os.environ[\'CUDA_VISIBLE_DEVICES\']=?')
 flags.DEFINE_bool('amp', False, 'use Automatically Mixed Precision?')
 
 # I/O
@@ -81,8 +78,8 @@ flags.DEFINE_integer(
     'model_alpha', 200,
     '110 layers ranged from 48 to 270 in paper, seems larger is better but parameters inefficiency'
 )
-flags.DEFINE_integer('depth', 3 * 20 + 2, 'depth>=50 use Bottleneck')
-flags.DEFINE_bool('bottleneck', True,
+flags.DEFINE_integer('depth', None, 'depth>=50 use Bottleneck')
+flags.DEFINE_bool('bottleneck', None,
                   'True for ResBottleneck, False for ResBlock')
 flags.DEFINE_string('filters_mode', 'small',
                     'small for cifar10, large for imagenet')
@@ -101,11 +98,19 @@ try:
 except:
     logging.info('init flags')
 
+# logging config
+tf.get_logger().setLevel('WARNING')
+logging.set_verbosity(logging.INFO)
+logging.set_stderrthreshold(logging.INFO)
 # rename log/save path
 FLAGS.log_path = os.path.join(FLAGS.local_path, FLAGS.exp_name, current_time,
                               FLAGS.log_path)
 FLAGS.save_path = os.path.join(FLAGS.local_path, FLAGS.exp_name, current_time,
                                FLAGS.save_path)
+if not os.path.exists(FLAGS.log_path):
+    os.makedirs(FLAGS.log_path)
+logging.get_absl_handler().use_absl_log_file(FLAGS.exp_name,
+                                             log_dir=FLAGS.log_path)
 
 ## show all FLAGS
 for flag, value in FLAGS.flag_values_dict().items():
@@ -114,12 +119,6 @@ for flag, value in FLAGS.flag_values_dict().items():
 # envs
 os.environ["CUDA_VISIBLE_DEVICES"] = FLAGS.gpus
 logging.info('CUDA_VISIBLE_DEVICES={}'.format(FLAGS.gpus))
-
-# logging
-if not os.path.exists(FLAGS.log_path):
-    os.makedirs(FLAGS.log_path)
-logging.get_absl_handler().use_absl_log_file(FLAGS.exp_name,
-                                             log_dir=FLAGS.log_path)
 
 
 # new thread for tensorboard, avoiding from annoying logging msg on notebook

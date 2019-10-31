@@ -6,45 +6,42 @@ from absl import logging
 FLAGS = flags.FLAGS
 
 
-class ResBlock(blocks.Block):
-    outchannel_ratio = 1
+# class ResBlock(blocks.Block):
+#     outchannel_ratio = 1
 
-    def __init__(self, filters, strides=1):
-        super(ResBlock, self).__init__(filters, strides=strides)
-        self.strides = strides
-        self.bk1 = blocks.BasicBlock(filters,
-                                     3,
-                                     strides=strides,
-                                     preact=False,
-                                     use_norm=True,
-                                     use_act=True)
-        self.bk2 = blocks.BasicBlock(filters,
-                                     3,
-                                     strides=1,
-                                     preact=False,
-                                     use_norm=True,
-                                     use_act=False)
-        self.act = layers.Act()
+#     def __init__(self, filters, strides=1):
+#         super(ResBlock, self).__init__(filters, strides=strides)
+#         self.strides = strides
+#         self.bk1 = blocks.BasicBlock(filters,
+#                                      3,
+#                                      strides=strides,
+#                                      preact=False,
+#                                      use_norm=True,
+#                                      use_act=True)
+#         self.bk2 = blocks.BasicBlock(filters,
+#                                      3,
+#                                      strides=1,
+#                                      preact=False,
+#                                      use_norm=True,
+#                                      use_act=False)
+#         self.act = layers.Act()
 
-        if self.strides != 1:
-            self.shortcut = blocks.BasicBlock(filters,
-                                              1,
-                                              strides=strides,
-                                              preact=False,
-                                              use_norm=True,
-                                              use_act=False)
-        else:
-            self.shortcut = None
+#         if self.strides != 1:
+#             self.shortcut = blocks.BasicBlock(filters,
+#                                               1,
+#                                               strides=strides,
+#                                               preact=False,
+#                                               use_norm=True,
+#                                               use_act=False)
+#         else:
+#             self.shortcut = lambda in_: in_
 
-    def call(self, x):
-        out = self.bk1(x)
-        out = self.bk2(out)
-        if self.shortcut is None:
-            out = out + x
-        else:
-            out = out + self.shortcut(x)
-        out = self.act(out)
-        return out
+#     def call(self, x):
+#         out = self.bk1(x)
+#         out = self.bk2(out)
+#         out = out + self.shortcut(x)
+#         out = self.act(out)
+#         return out
 
 
 class ResNet_Cifar10(models.Model):
@@ -52,7 +49,7 @@ class ResNet_Cifar10(models.Model):
         super(ResNet_Cifar10, self).__init__()
         self.out_dim = FLAGS.out_dim
         self.depth = FLAGS.depth
-        self.block = ResBlock
+        self.block = blocks.ResBlock
         #         if FLAGS.bottleneck:
         #             self.block = ResBottleneck
         #         else:
@@ -81,9 +78,9 @@ class ResNet_Cifar10(models.Model):
 
     def _build_group(self, filters, num_block, strides):
         all_blocks = []
-        all_blocks.append(self.block(filters, strides=strides))
+        all_blocks.append(self.block(filters, strides=strides, preact=False, last_norm=False, shortcut_type='project'))
         for _ in range(1, num_block):
-            all_blocks.append(self.block(filters, strides=1))
+            all_blocks.append(self.block(filters, strides=1, preact=False, last_norm=False, shortcut_type='project'))
         return tf.keras.Sequential(all_blocks)
 
     def call(self, x):
