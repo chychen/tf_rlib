@@ -21,7 +21,7 @@ FLAGS = flags.FLAGS
 
 # General settings
 flags.DEFINE_bool('profile', False, 'use TensorBoard profiler?')
-flags.DEFINE_integer('port', '6006', 'port for Tensorbaord')
+# flags.DEFINE_integer('port', '6006', 'port for Tensorbaord')
 flags.DEFINE_string(
     'local_path', '/results',
     'tmp folder')  # NOTE: save in local is faster than mounted location
@@ -121,15 +121,15 @@ os.environ["CUDA_VISIBLE_DEVICES"] = FLAGS.gpus
 logging.info('CUDA_VISIBLE_DEVICES={}'.format(FLAGS.gpus))
 
 
-# new thread for tensorboard, avoiding from annoying logging msg on notebook
-def launchTensorBoard():
-    os.system('tensorboard --logdir {} --bind_all --port {}'.format(
-        FLAGS.log_path, FLAGS.port))
-    return
+# # new thread for tensorboard, avoiding from annoying logging msg on notebook
+# def launchTensorBoard():
+#     os.system('tensorboard --logdir {} --bind_all --port {}'.format(
+#         FLAGS.log_path, FLAGS.port))
+#     return
 
 
-# NOTE: this is a fire-and-forget thread
-logging.info('launching tensorboard --logdir {} --bind_all --port {}'.format(
-    FLAGS.log_path, FLAGS.port))
-t = threading.Thread(target=launchTensorBoard, args=([]))
-t.start()
+# # NOTE: this is a fire-and-forget thread
+# logging.info('launching tensorboard --logdir {} --bind_all --port {}'.format(
+#     FLAGS.log_path, FLAGS.port))
+# t = threading.Thread(target=launchTensorBoard, args=([]))
+# t.start()
