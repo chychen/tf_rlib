@@ -1,7 +1,7 @@
 FROM tensorflow/tensorflow:latest-gpu-py3-jupyter 
 
 RUN apt update
-RUN apt install -y vim git
+RUN apt install -y vim git screen
 # jupyter
 RUN pip install jupyterlab
 RUN pip install ipywidgets
