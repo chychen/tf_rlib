@@ -16,6 +16,8 @@ EXPOSE 6006
 EXPOSE 8888
 EXPOSE 5000
 
-
 WORKDIR /
+
+CMD nohup tensorboard --logdir /results --bind_all --port 6006 & jupyter lab --ip=0.0.0.0 --no-browser --NotebookApp.token='' --allow-root --NotebookApp.allow_origin='*' --notebook-dir='/'
+
 
