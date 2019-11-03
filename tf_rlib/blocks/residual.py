@@ -24,11 +24,16 @@ def shortcut_padding(out, x, downsample):
 class ResBlock(blocks.Block):
     outchannel_ratio = 1
 
-    def __init__(self, filters, strides=1, preact=True, last_norm=True, shortcut_type='pad'):
+    def __init__(self,
+                 filters,
+                 strides=1,
+                 preact=True,
+                 last_norm=True,
+                 shortcut_type='pad'):
         super(ResBlock, self).__init__(filters, strides=strides)
         self.strides = strides
         self.last_norm = last_norm
-        self.shortcut_type= shortcut_type
+        self.shortcut_type = shortcut_type
         self.bk1 = blocks.BasicBlock(filters,
                                      3,
                                      strides=strides,
@@ -59,7 +64,6 @@ class ResBlock(blocks.Block):
             elif self.shortcut_type == 'project':
                 self.shortcut = lambda in_: in_
 
-                
     def call(self, x):
         out = self.bk1(x)
         out = self.bk2(out)

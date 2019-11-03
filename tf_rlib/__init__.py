@@ -8,6 +8,7 @@ from absl import app
 from absl import flags, logging
 from tf_rlib.utils.ipython import isnotebook
 from tf_rlib import blocks, datasets, layers, models, research, runners, utils
+from tf_rlib.utils import purge_logs
 
 # envs
 current_time = datetime.datetime.now(
@@ -18,9 +19,13 @@ current_time = datetime.datetime.now(
 #############################
 
 FLAGS = flags.FLAGS
+LOGGER = logging.get_absl_logger()
 
 # General settings
+flags.DEFINE_string('log_level', 'INFO',
+                    'log_level: DEBUG, INFO, WARNING, ERROR')
 flags.DEFINE_bool('profile', False, 'use TensorBoard profiler?')
+flags.DEFINE_bool('purge_logs', True, 'remove all logs')
 # flags.DEFINE_integer('port', '6006', 'port for Tensorbaord')
 flags.DEFINE_string(
     'local_path', '/results',
@@ -32,7 +37,8 @@ flags.DEFINE_string('comment', None, 'any comment?')
 flags.DEFINE_string('benchmark_runner', None, 'any comment?')
 
 # Speedup Options
-flags.DEFINE_string('gpus', '0,1,2,3,4,5,6,7', 'os.environ[\'CUDA_VISIBLE_DEVICES\']=?')
+flags.DEFINE_string('gpus', '0,1,2,3,4,5,6,7',
+                    'os.environ[\'CUDA_VISIBLE_DEVICES\']=?')
 flags.DEFINE_bool('amp', False, 'use Automatically Mixed Precision?')
 
 # I/O
@@ -96,37 +102,39 @@ if isnotebook():
 try:
     app.run(lambda _: 0)
 except:
-    logging.info('init flags')
+    LOGGER.info('init flags')
 
-# logging config
-tf.get_logger().setLevel('WARNING')
-logging.set_verbosity(logging.INFO)
-logging.set_stderrthreshold(logging.INFO)
 # rename log/save path
 FLAGS.log_path = os.path.join(FLAGS.local_path, FLAGS.exp_name, current_time,
                               FLAGS.log_path)
 FLAGS.save_path = os.path.join(FLAGS.local_path, FLAGS.exp_name, current_time,
                                FLAGS.save_path)
+# logging config
+if FLAGS.purge_logs:
+    purge_logs()
+
 if not os.path.exists(FLAGS.log_path):
     os.makedirs(FLAGS.log_path)
-logging.get_absl_handler().use_absl_log_file(FLAGS.exp_name,
-                                             log_dir=FLAGS.log_path)
+
+hd = logging.logging.FileHandler(os.path.join(FLAGS.log_path, 'logging.txt'))
+hd.setLevel('INFO')
+LOGGER.addHandler(hd)
+tf.get_logger().setLevel('WARNING')
+LOGGER.setLevel(FLAGS.log_level)
 
 ## show all FLAGS
 for flag, value in FLAGS.flag_values_dict().items():
-    logging.info('FLAGS: --{}={}'.format(flag, value))
+    LOGGER.info('FLAGS: --{}={}'.format(flag, value))
 
 # envs
 os.environ["CUDA_VISIBLE_DEVICES"] = FLAGS.gpus
-logging.info('CUDA_VISIBLE_DEVICES={}'.format(FLAGS.gpus))
-
+LOGGER.info('CUDA_VISIBLE_DEVICES={}'.format(FLAGS.gpus))
 
 # # new thread for tensorboard, avoiding from annoying logging msg on notebook
 # def launchTensorBoard():
 #     os.system('tensorboard --logdir {} --bind_all --port {}'.format(
 #         FLAGS.log_path, FLAGS.port))
 #     return
-
 
 # # NOTE: this is a fire-and-forget thread
 # logging.info('launching tensorboard --logdir {} --bind_all --port {}'.format(

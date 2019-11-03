@@ -13,18 +13,19 @@ class ClassificationResNet18Cifar10(runner.Runner):
     """
     Dataset: Cifar10
     Model: ResNet-18
-    Baseline Accuracy:
     Epochs: 300
     Scheduled LR: 1e-1 (1-150), 1e-2 (150-225), 1e-3 (225-300)
     Optimizer: SGD+momentum(0.9)+nesterov
+    Accuracy%: 93.6
+    Parameters: 11,173,962
     """
     def __init__(self):
         # cifar10
         train_dataset, valid_dataset = get_cifar10()
         # resnet-18
-        FLAGS.depth=18
-        self.model = ResNet_Cifar10([2,2,2,2])
-        
+        FLAGS.depth = 18
+        self.model = ResNet_Cifar10([2, 2, 2, 2])
+
         train_metrics = {
             'loss': tf.keras.metrics.MeanTensor('loss'),
             'acc': tf.keras.metrics.SparseCategoricalAccuracy('acc')
@@ -40,12 +41,13 @@ class ClassificationResNet18Cifar10(runner.Runner):
             from_logits=True)
         self.optim = tf.keras.optimizers.SGD(0.0, 0.9, nesterov=True)
 
-        super(ClassificationResNet18Cifar10, self).__init__({'resnet': self.model},
-                                                   train_dataset,
-                                                   valid_dataset=valid_dataset,
-                                                   train_metrics=train_metrics,
-                                                   valid_metrics=valid_metrics,
-                                                   best_state='acc')
+        super(ClassificationResNet18Cifar10,
+              self).__init__({'resnet': self.model},
+                             train_dataset,
+                             valid_dataset=valid_dataset,
+                             train_metrics=train_metrics,
+                             valid_metrics=valid_metrics,
+                             best_state='acc')
         # start training
         self.fit(300, 1e-1)
 

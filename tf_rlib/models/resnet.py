@@ -5,7 +5,6 @@ from absl import logging
 
 FLAGS = flags.FLAGS
 
-
 # class ResBlock(blocks.Block):
 #     outchannel_ratio = 1
 
@@ -78,9 +77,19 @@ class ResNet_Cifar10(models.Model):
 
     def _build_group(self, filters, num_block, strides):
         all_blocks = []
-        all_blocks.append(self.block(filters, strides=strides, preact=False, last_norm=False, shortcut_type='project'))
+        all_blocks.append(
+            self.block(filters,
+                       strides=strides,
+                       preact=False,
+                       last_norm=False,
+                       shortcut_type='project'))
         for _ in range(1, num_block):
-            all_blocks.append(self.block(filters, strides=1, preact=False, last_norm=False, shortcut_type='project'))
+            all_blocks.append(
+                self.block(filters,
+                           strides=1,
+                           preact=False,
+                           last_norm=False,
+                           shortcut_type='project'))
         return tf.keras.Sequential(all_blocks)
 
     def call(self, x):

@@ -1,6 +1,6 @@
 """
 python dev_classification.py --depth=32 --model_alpha=48 --bottleneck=False
-python dev_classification.py --depth=110 --model_alpha=48 --bottleneck=False --gpus=1 --port=6007
+python dev_classification.py --depth=110 --model_alpha=48 --bottleneck=False --gpus=1
 """
 import sys
 sys.path.append('..')

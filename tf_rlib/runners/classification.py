@@ -1,9 +1,10 @@
 """ Features
 - [v] PyramidNet
-- [ ] Warmup LR
-- [ ] CosineAnnealing LR
+- [v] Warmup LR
+- [v] CosineAnnealing LR
 - [ ] Mixup
 - [ ] AdamW
+- [ ] Fixup Init
 - [ ] Lookahead
 - [v] WeightDecay
 """

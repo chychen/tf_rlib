@@ -1,9 +1,9 @@
 import tensorflow as tf
 from tf_rlib import layers, blocks, models
-from absl import flags
-from absl import logging
+from absl import flags, logging
 
 FLAGS = flags.FLAGS
+LOGGER = logging.get_absl_logger()
 
 
 class PyramidNet(models.Model):
@@ -61,7 +61,7 @@ class PyramidNet(models.Model):
     def _get_block_filters(self):
         self.block_counter = self.block_counter + 1
         filters = int(self.in_filters + self.block_counter * self.block_ratio)
-        logging.info('block id: {}, filters: {}'.format(
+        LOGGER.debug('block id: {}, filters: {}'.format(
             self.block_counter, filters))
         return filters
 

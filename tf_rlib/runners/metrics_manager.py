@@ -4,6 +4,7 @@ import tensorflow as tf
 from absl import flags, logging
 
 FLAGS = flags.FLAGS
+LOGGER = logging.get_absl_logger()
 
 
 class MetricsManager:
@@ -52,7 +53,7 @@ class MetricsManager:
         tmp_msg = tmp_msg + 'samples/sec: {:.4f}\n'.format(
             self.num_data * FLAGS.bs / time_cost)
         self.append_message(tmp_msg)
-        logging.info(self.message)
+        LOGGER.info(self.message)
 
     def show_image(self, x, training, epoch):
         with self.boards_writer[self._get_key(training)].as_default():
