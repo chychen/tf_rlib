@@ -25,7 +25,7 @@ LOGGER = logging.get_absl_logger()
 flags.DEFINE_string('log_level', 'INFO',
                     'log_level: DEBUG, INFO, WARNING, ERROR')
 flags.DEFINE_bool('profile', False, 'use TensorBoard profiler?')
-flags.DEFINE_bool('purge_logs', True, 'remove all logs')
+flags.DEFINE_bool('purge_logs', False, 'remove all logs')
 # flags.DEFINE_integer('port', '6006', 'port for Tensorbaord')
 flags.DEFINE_string(
     'local_path', '/results',
