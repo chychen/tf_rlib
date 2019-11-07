@@ -21,7 +21,8 @@ class MetricsManager:
             self.keys[0]: tf.summary.create_file_writer(train_log_path),
             self.keys[1]: tf.summary.create_file_writer(valid_log_path)
         }
-        self.num_data = 0
+        self.train_num_batch = None
+        self.valid_num_batch = None
         self.timer = time.time()
         self.best_state = best_state
         self.best_state_policy, self.best_record = self._state_policy_mapper(
@@ -50,8 +51,12 @@ class MetricsManager:
                         tf.summary.scalar(self.metrics[key][k].name,
                                           v,
                                           step=epoch)
-        tmp_msg = tmp_msg + 'samples/sec: {:.4f}\n'.format(
-            self.num_data * FLAGS.bs / time_cost)
+        if self.train_num_batch is None or self.valid_num_batch is None:
+            tmp_msg = tmp_msg + 'samples/sec: unknown\n'
+        else:
+            tmp_msg = tmp_msg + 'samples/sec: {:.4f}\n'.format(
+                (self.train_num_batch + self.valid_num_batch) * FLAGS.bs /
+                time_cost)
         self.append_message(tmp_msg)
         LOGGER.info(self.message)
 
@@ -65,7 +70,6 @@ class MetricsManager:
             data (dict): key(str), value(list)
         """
         if type(data) == dict:
-            self.num_data = self.num_data + 1
             for k, v in data.items():
                 self.metrics[self._get_key(training)][k].update_state(*v)
         else:
@@ -96,6 +100,10 @@ class MetricsManager:
         self.timer = time.time()
         self.num_data = 0
         self.message = ''
+
+    def set_num_batch(self, train_num_batch, valid_num_batch):
+        self.train_num_batch = train_num_batch
+        self.valid_num_batch = valid_num_batch
 
     def _update_best_record(self, new_record):
         old_best_record = self.best_record

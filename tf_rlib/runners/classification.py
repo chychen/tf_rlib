@@ -20,31 +20,27 @@ FLAGS = flags.FLAGS
 
 class ClassificationRunner(runner.Runner):
     def __init__(self, train_dataset, valid_dataset=None):
+        super(ClassificationRunner, self).__init__(train_dataset,
+                                                   valid_dataset=valid_dataset,
+                                                   best_state='acc')
+
+    def init(self):
         self.model = PyramidNet()
         train_metrics = {
-            'loss': tf.keras.metrics.MeanTensor('loss'),
+            'loss': tf.keras.metrics.Mean('loss'),
             'acc': tf.keras.metrics.SparseCategoricalAccuracy('acc')
         }
         valid_metrics = {
-            'loss':
-            tf.keras.metrics.SparseCategoricalCrossentropy('loss',
-                                                           from_logits=True),
-            'acc':
-            tf.keras.metrics.SparseCategoricalAccuracy('acc')
+            'loss': tf.keras.metrics.Mean('loss'),
+            'acc': tf.keras.metrics.SparseCategoricalAccuracy('acc')
         }
-        self.loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(
-            from_logits=True)
+        self.loss_object = tf.keras.losses.SparseCategoricalCrossentropy(
+            from_logits=True, reduction=tf.keras.losses.Reduction.NONE)
         self.optim = tf.keras.optimizers.Adam(FLAGS.lr,
                                               beta_1=FLAGS.adam_beta_1,
                                               beta_2=FLAGS.adam_beta_2,
                                               epsilon=FLAGS.adam_epsilon)
-
-        super(ClassificationRunner, self).__init__({'pyramidnet': self.model},
-                                                   train_dataset,
-                                                   valid_dataset=valid_dataset,
-                                                   train_metrics=train_metrics,
-                                                   valid_metrics=valid_metrics,
-                                                   best_state='acc')
+        return {'pyramidnet': self.model}, train_metrics, valid_metrics
 
     def begin_fit_callback(self, lr):
         self.init_lr = lr
@@ -61,7 +57,6 @@ class ClassificationRunner(runner.Runner):
 
         self.log_scalar('lr', self.optim.lr, epoch_id, training=True)
 
-    @tf.function
     def train_step(self, x, y):
         """
         Args:
@@ -72,17 +67,17 @@ class ClassificationRunner(runner.Runner):
         """
         with tf.GradientTape() as tape:
             logits = self.model(x, training=True)
-            loss = self.loss_fn(y, logits)
-            regularization_loss = tf.math.add_n(self.model.losses)
+            loss = self.loss_object(y, logits)
+            loss = tf.nn.compute_average_loss(loss, global_batch_size=FLAGS.bs)
+            regularization_loss = tf.nn.scale_regularization_loss(
+                tf.math.add_n(self.model.losses))
             total_loss = loss + regularization_loss
 
         grads = tape.gradient(total_loss, self.model.trainable_weights)
         self.optim.apply_gradients(zip(grads, self.model.trainable_weights))
         probs = tf.nn.softmax(logits)
-
         return {'loss': [loss], 'acc': [y, probs]}
 
-    @tf.function
     def validate_step(self, x, y):
         """
         Args:
@@ -92,8 +87,10 @@ class ClassificationRunner(runner.Runner):
             metrics (dict)
         """
         logits = self.model(x, training=False)
+        loss = self.loss_object(y, logits)
+        loss = tf.nn.compute_average_loss(loss, global_batch_size=FLAGS.bs)
         probs = tf.nn.softmax(logits)
-        return {'loss': [y, logits], 'acc': [y, probs]}
+        return {'loss': [loss], 'acc': [y, probs]}
 
     @tf.function
     def inference(self, dataset):

@@ -53,7 +53,7 @@ flags.DEFINE_integer(
 flags.DEFINE_float('lr', 1e-3, 'Initial Learning Rate')
 flags.DEFINE_integer('epochs', 300, 'number of epochs for warming up')
 flags.DEFINE_integer('warmup', 5, 'number of epochs for warming up')
-flags.DEFINE_integer('bs', 128, 'Batch Size')
+flags.DEFINE_integer('bs', 128, 'global Batch Size for all gpus')
 flags.DEFINE_float('adam_beta_1', 0.9, 'adam beta_1')
 flags.DEFINE_float('adam_beta_2', 0.999, 'adam beta_2')
 flags.DEFINE_float('adam_epsilon', 1e-8,
@@ -128,7 +128,6 @@ for flag, value in FLAGS.flag_values_dict().items():
 
 # envs
 os.environ["CUDA_VISIBLE_DEVICES"] = FLAGS.gpus
-LOGGER.info('CUDA_VISIBLE_DEVICES={}'.format(FLAGS.gpus))
 
 # # new thread for tensorboard, avoiding from annoying logging msg on notebook
 # def launchTensorBoard():

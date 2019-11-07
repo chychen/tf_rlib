@@ -24,6 +24,20 @@ def get_cifar10():
         x = tf.image.random_flip_left_right(x)
         return x, y
 
+    train_dataset = tf.data.Dataset.from_tensor_slices(
+        (train_data_x, train_data_y))
+    valid_dataset = tf.data.Dataset.from_tensor_slices(
+        (valid_data_x, valid_data_y))
+    train_dataset = train_dataset.map(
+        augmentation,
+        num_parallel_calls=tf.data.experimental.AUTOTUNE).cache().shuffle(
+            50000).batch(FLAGS.bs, drop_remainder=True).prefetch(
+                buffer_size=tf.data.experimental.AUTOTUNE)
+    valid_dataset = valid_dataset.cache().batch(
+        FLAGS.bs, drop_remainder=False).prefetch(
+            buffer_size=tf.data.experimental.AUTOTUNE)
+    return [train_dataset, valid_dataset]
+
 
 #     # batchwise is slower in this augmentation
 #     @tf.function
@@ -36,16 +50,3 @@ def get_cifar10():
 #         choice_flip = tf.random.uniform(shape=[bs, 1, 1, 1], minval=0.0, maxval=1.0)
 #         x = tf.where(tf.less(choice_flip, 0.5), tf.image.random_flip_left_right(x), x)
 #         return x, y
-
-    train_dataset = tf.data.Dataset.from_tensor_slices(
-        (train_data_x, train_data_y))
-    valid_dataset = tf.data.Dataset.from_tensor_slices(
-        (valid_data_x, valid_data_y))
-    train_dataset = train_dataset.shuffle(50000).map(
-        augmentation, num_parallel_calls=tf.data.experimental.AUTOTUNE).batch(
-            FLAGS.bs, drop_remainder=False).prefetch(
-                buffer_size=tf.data.experimental.AUTOTUNE)
-    valid_dataset = valid_dataset.batch(
-        FLAGS.bs, drop_remainder=False).prefetch(
-            buffer_size=tf.data.experimental.AUTOTUNE)
-    return [train_dataset, valid_dataset]

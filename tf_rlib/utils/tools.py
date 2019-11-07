@@ -14,3 +14,9 @@ def purge_logs():
 def set_logging(level):
     FLAGS.log_level = level
     LOGGER.setLevel(FLAGS.log_level)
+
+
+def set_gpus(gpus):
+    FLAGS.gpus = gpus
+    os.environ["CUDA_VISIBLE_DEVICES"] = FLAGS.gpus
+    logging.warn('CUDA_VISIBLE_DEVICES={}'.format(FLAGS.gpus))
