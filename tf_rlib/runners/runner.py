@@ -12,6 +12,9 @@ LOGGER = logging.get_absl_logger()
 
 
 class Runner:
+    """ please make sure all the losses follow the distributed training mechanism:
+    please see https://www.tensorflow.org/tutorials/distribute/custom_training
+    """
     def __init__(self, train_dataset, valid_dataset=None, best_state=None):
         """
         Args

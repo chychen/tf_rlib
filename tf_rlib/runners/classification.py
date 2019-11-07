@@ -35,7 +35,8 @@ class ClassificationRunner(runner.Runner):
             'acc': tf.keras.metrics.SparseCategoricalAccuracy('acc')
         }
         self.loss_object = tf.keras.losses.SparseCategoricalCrossentropy(
-            from_logits=True, reduction=tf.keras.losses.Reduction.NONE)
+            from_logits=True,
+            reduction=tf.keras.losses.Reduction.NONE)  # distributed-aware
         self.optim = tf.keras.optimizers.Adam(FLAGS.lr,
                                               beta_1=FLAGS.adam_beta_1,
                                               beta_2=FLAGS.adam_beta_2,
@@ -68,9 +69,10 @@ class ClassificationRunner(runner.Runner):
         with tf.GradientTape() as tape:
             logits = self.model(x, training=True)
             loss = self.loss_object(y, logits)
-            loss = tf.nn.compute_average_loss(loss, global_batch_size=FLAGS.bs)
+            loss = tf.nn.compute_average_loss(
+                loss, global_batch_size=FLAGS.bs)  # distributed-aware
             regularization_loss = tf.nn.scale_regularization_loss(
-                tf.math.add_n(self.model.losses))
+                tf.math.add_n(self.model.losses))  # distributed-aware
             total_loss = loss + regularization_loss
 
         grads = tape.gradient(total_loss, self.model.trainable_weights)
