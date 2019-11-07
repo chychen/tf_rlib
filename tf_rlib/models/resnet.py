@@ -5,43 +5,6 @@ from absl import logging
 
 FLAGS = flags.FLAGS
 
-# class ResBlock(blocks.Block):
-#     outchannel_ratio = 1
-
-#     def __init__(self, filters, strides=1):
-#         super(ResBlock, self).__init__(filters, strides=strides)
-#         self.strides = strides
-#         self.bk1 = blocks.BasicBlock(filters,
-#                                      3,
-#                                      strides=strides,
-#                                      preact=False,
-#                                      use_norm=True,
-#                                      use_act=True)
-#         self.bk2 = blocks.BasicBlock(filters,
-#                                      3,
-#                                      strides=1,
-#                                      preact=False,
-#                                      use_norm=True,
-#                                      use_act=False)
-#         self.act = layers.Act()
-
-#         if self.strides != 1:
-#             self.shortcut = blocks.BasicBlock(filters,
-#                                               1,
-#                                               strides=strides,
-#                                               preact=False,
-#                                               use_norm=True,
-#                                               use_act=False)
-#         else:
-#             self.shortcut = lambda in_: in_
-
-#     def call(self, x):
-#         out = self.bk1(x)
-#         out = self.bk2(out)
-#         out = out + self.shortcut(x)
-#         out = self.act(out)
-#         return out
-
 
 class ResNet_Cifar10(models.Model):
     def __init__(self, num_blocks):
@@ -49,6 +12,7 @@ class ResNet_Cifar10(models.Model):
         self.out_dim = FLAGS.out_dim
         self.depth = FLAGS.depth
         self.block = blocks.ResBlock
+        # TODO
         #         if FLAGS.bottleneck:
         #             self.block = ResBottleneck
         #         else:

@@ -29,12 +29,17 @@ class PyramidNet(models.Model):
         self.model_alpha = FLAGS.model_alpha
         if FLAGS.bottleneck:
             self.block = blocks.ResBottleneck
-            group_blocks = int((self.depth - 2) / 3 / self.groups)
+            total_blocks = int((self.depth - 2) / 3)
         else:
             self.block = blocks.ResBlock
-            group_blocks = int((self.depth - 2) / 2 / self.groups)
+            total_blocks = int((self.depth - 2) / 2)
 
-        self.block_ratio = self.model_alpha / (self.groups * group_blocks)
+        avg_blocks = int(total_blocks / self.groups)
+        group_blocks = [avg_blocks for _ in range(self.groups - 1)] + [
+            total_blocks - avg_blocks * (self.groups - 1),
+        ]
+
+        self.block_ratio = self.model_alpha / total_blocks
         self.block_counter = 0
 
         self.head = blocks.BasicBlock(self.in_filters,
@@ -47,10 +52,12 @@ class PyramidNet(models.Model):
             self.in_pool = tf.keras.layers.AveragePooling(
                 pool_size=(3, ) * FLAGS.dim, strides=2, padding=FLAGS.padding)
 
-        self.all_groups = [self._build_pyramid_group(group_blocks, strides=1)]
-        for _ in range(1, self.groups):
+        self.all_groups = [
+            self._build_pyramid_group(group_blocks[0], strides=1)
+        ]
+        for b in range(1, self.groups):
             self.all_groups.append(
-                self._build_pyramid_group(group_blocks, strides=2))
+                self._build_pyramid_group(group_blocks[b], strides=2))
 
         self.bn = layers.Norm()
         self.act = layers.Act()
