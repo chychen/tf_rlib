@@ -148,7 +148,7 @@ class Runner:
                         })
                     self._log_data(x_batch, training=False)
 
-                if self.epoch == 0:
+                if self.epoch == 1:
                     LOGGER.warn('time cost for first epoch: {} sec'.format(
                         time.time() - first_e_timer))
                 if e_idx == 0:
