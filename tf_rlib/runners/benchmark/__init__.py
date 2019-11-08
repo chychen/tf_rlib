@@ -1,1 +1,2 @@
 from tf_rlib.runners.benchmark.classification_resnet18_cifar10 import ClassificationResNet18Cifar10
+from tf_rlib.runners.benchmark.classification_pyramidnet272_cifar10 import ClassificationPyramidNet272Cifar10

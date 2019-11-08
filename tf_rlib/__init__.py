@@ -26,6 +26,8 @@ flags.DEFINE_string('log_level', 'INFO',
                     'log_level: DEBUG, INFO, WARNING, ERROR')
 flags.DEFINE_bool('profile', False, 'use TensorBoard profiler?')
 flags.DEFINE_bool('purge_logs', False, 'remove all logs')
+flags.DEFINE_string('current_time', current_time,
+                    'timezone: Asia/Taipei, strftime: %Y%m%d-%H%M%S')
 # flags.DEFINE_integer('port', '6006', 'port for Tensorbaord')
 flags.DEFINE_string(
     'local_path', '/results',
@@ -105,10 +107,10 @@ except:
     LOGGER.info('init flags')
 
 # rename log/save path
-FLAGS.log_path = os.path.join(FLAGS.local_path, FLAGS.exp_name, current_time,
-                              FLAGS.log_path)
-FLAGS.save_path = os.path.join(FLAGS.local_path, FLAGS.exp_name, current_time,
-                               FLAGS.save_path)
+FLAGS.log_path = os.path.join(FLAGS.local_path, FLAGS.exp_name,
+                              FLAGS.current_time, FLAGS.log_path)
+FLAGS.save_path = os.path.join(FLAGS.local_path, FLAGS.exp_name,
+                               FLAGS.current_time, FLAGS.save_path)
 # logging config
 if FLAGS.purge_logs:
     purge_logs()

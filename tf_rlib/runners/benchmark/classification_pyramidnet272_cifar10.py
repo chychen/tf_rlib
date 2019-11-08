@@ -1,7 +1,8 @@
 import tensorflow as tf
-from tf_rlib.models import ResNet_Cifar10
+from tf_rlib.models import PyramidNet
 from tf_rlib.runners import runner
 from tf_rlib.datasets import get_cifar10
+from tf_rlib import utils
 from absl import flags
 from absl import logging
 import numpy as np
@@ -9,26 +10,27 @@ import numpy as np
 FLAGS = flags.FLAGS
 
 
-class ClassificationResNet18Cifar10(runner.Runner):
-    """
+class ClassificationPyramidNet272Cifar10(runner.Runner):
+    """ 4 gpus training
     Dataset: Cifar10
-    Model: ResNet-18
+    Model: PyramidNet272
     Epochs: 300
     Scheduled LR: 1e-1 (1-150), 1e-2 (150-225), 1e-3 (225-300)
     Optimizer: SGD+momentum(0.9)+nesterov
-    Accuracy%: 93.6
-    Parameters: 11,173,962
+    Accuracy%: ?
+    Parameters: 26,049,562
     """
     def __init__(self):
-        utils.set_gpus('0')
+        utils.set_gpus('0,1,2,3')
         utils.set_logging('WARN')
-        utils.set_exp_name(ClassificationResNet18Cifar10.__name__)
+        utils.set_exp_name(ClassificationPyramidNet272Cifar10.__name__)
+        # pyramidnet-272
+        FLAGS.depth = 272
+        FLAGS.model_alpha = 200
+        FLAGS.bottleneck = True
         # cifar10
         train_dataset, valid_dataset = get_cifar10()
-        # resnet-18
-        FLAGS.depth = 18
-        train_dataset, valid_dataset = get_cifar10()
-        super(ClassificationResNet18Cifar10,
+        super(ClassificationPyramidNet272Cifar10,
               self).__init__(train_dataset,
                              valid_dataset=valid_dataset,
                              best_state='acc')
@@ -36,7 +38,7 @@ class ClassificationResNet18Cifar10(runner.Runner):
         self.fit(300, 1e-1)
 
     def init(self):
-        self.model = ResNet_Cifar10([2, 2, 2, 2])
+        self.model = PyramidNet()
         train_metrics = {
             'loss': tf.keras.metrics.Mean('loss'),
             'acc': tf.keras.metrics.SparseCategoricalAccuracy('acc')
@@ -49,7 +51,7 @@ class ClassificationResNet18Cifar10(runner.Runner):
             from_logits=True,
             reduction=tf.keras.losses.Reduction.NONE)  # distributed-aware
         self.optim = tf.keras.optimizers.SGD(0.0, 0.9, nesterov=True)
-        return {'resnet': self.model}, train_metrics, valid_metrics
+        return {'pyramidnet': self.model}, train_metrics, valid_metrics
 
     def begin_epoch_callback(self, epoch_id, epochs):
         if epoch_id >= 0 and epoch_id < 150:
