@@ -20,9 +20,9 @@ class ClassificationResNet18Cifar10(runner.Runner):
     Parameters: 11,173,962
     """
     def __init__(self):
-        utils.set_gpus('0')
-        utils.set_logging('WARN')
-        utils.set_exp_name(ClassificationResNet18Cifar10.__name__)
+        FLAGS.gpus = '0'
+        FLAGS.log_level = 'WARN'
+        FLAGS.exp_name = ClassificationResNet18Cifar10.__name__
         # cifar10
         train_dataset, valid_dataset = get_cifar10()
         # resnet-18

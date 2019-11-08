@@ -6,6 +6,7 @@ from absl import flags, logging
 import tensorflow as tf
 from tensorflow.python.eager import profiler
 from tf_rlib.runners import MetricsManager
+from tf_rlib import utils
 
 FLAGS = flags.FLAGS
 LOGGER = logging.get_absl_logger()
@@ -21,6 +22,7 @@ class Runner:
             models (dict): key(str), value(tf.keras.)
             metrics (dict): key(str), value(tf.keras.metrics.Metric)
         """
+        utils.init_tf_rlib(show=True)
         self.strategy = tf.distribute.MirroredStrategy()
         LOGGER.info('Number of devices: {}'.format(
             self.strategy.num_replicas_in_sync))
@@ -42,8 +44,6 @@ class Runner:
             self.epoch = 0
             self.step = 0
             self.save_path = FLAGS.save_path
-            #             self.train_num_batch, train_num_data = self._get_size(train_dataset)
-            #             self.valid_num_batch, valid_num_data = self._get_size(valid_dataset)
             self.best_state = best_state
             self.matrics_manager = MetricsManager(best_state)
             if train_metrics is None or valid_metrics is None:
@@ -111,6 +111,7 @@ class Runner:
             train_pbar = tqdm(desc='train', leave=False)
             valid_pbar = tqdm(desc='valid', leave=False)
             for e_idx in range(epochs):
+                first_e_timer = time.time()
                 self.begin_epoch_callback(self.epoch, epochs)
                 self.epoch = self.epoch + 1
                 # progress bars
@@ -147,6 +148,9 @@ class Runner:
                         })
                     self._log_data(x_batch, training=False)
 
+                if self.epoch == 0:
+                    LOGGER.warn('time cost for first epoch: {} sec'.format(
+                        time.time() - first_e_timer))
                 if e_idx == 0:
                     train_num_batch = train_num_batch + 1
                     valid_num_batch = valid_num_batch + 1

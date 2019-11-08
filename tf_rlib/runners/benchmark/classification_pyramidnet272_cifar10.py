@@ -2,7 +2,6 @@ import tensorflow as tf
 from tf_rlib.models import PyramidNet
 from tf_rlib.runners import runner
 from tf_rlib.datasets import get_cifar10
-from tf_rlib import utils
 from absl import flags
 from absl import logging
 import numpy as np
@@ -21,9 +20,9 @@ class ClassificationPyramidNet272Cifar10(runner.Runner):
     Parameters: 26,049,562
     """
     def __init__(self):
-        utils.set_gpus('0,1,2,3')
-        utils.set_logging('WARN')
-        utils.set_exp_name(ClassificationPyramidNet272Cifar10.__name__)
+        FLAGS.gpus = '0,1,2,3'
+        FLAGS.log_level = 'WARN'
+        FLAGS.exp_name = ClassificationPyramidNet272Cifar10.__name__
         # pyramidnet-272
         FLAGS.depth = 272
         FLAGS.model_alpha = 200

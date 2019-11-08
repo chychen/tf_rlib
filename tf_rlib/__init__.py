@@ -8,7 +8,7 @@ from absl import app
 from absl import flags, logging
 from tf_rlib.utils.ipython import isnotebook
 from tf_rlib import blocks, datasets, layers, models, research, runners, utils
-from tf_rlib.utils import purge_logs
+from tf_rlib.utils import purge_logs, init_tf_rlib
 
 # envs
 current_time = datetime.datetime.now(
@@ -42,6 +42,10 @@ flags.DEFINE_string('benchmark_runner', None, 'any comment?')
 flags.DEFINE_string('gpus', '0,1,2,3,4,5,6,7',
                     'os.environ[\'CUDA_VISIBLE_DEVICES\']=?')
 flags.DEFINE_bool('amp', False, 'use Automatically Mixed Precision?')
+flags.DEFINE_bool(
+    'xla', False,
+    'use XLA compiler, 99% models will get speedup, big model might need large compiling time.'
+)
 
 # I/O
 flags.DEFINE_integer('out_dim', 10, 'Model output dimensions')
@@ -106,39 +110,5 @@ try:
 except:
     LOGGER.info('init flags')
 
-# rename log/save path
-FLAGS.log_path = os.path.join(FLAGS.local_path, FLAGS.exp_name,
-                              FLAGS.current_time, FLAGS.log_path)
-FLAGS.save_path = os.path.join(FLAGS.local_path, FLAGS.exp_name,
-                               FLAGS.current_time, FLAGS.save_path)
-# logging config
-if FLAGS.purge_logs:
-    purge_logs()
-
-if not os.path.exists(FLAGS.log_path):
-    os.makedirs(FLAGS.log_path)
-
-hd = logging.logging.FileHandler(os.path.join(FLAGS.log_path, 'logging.txt'))
-hd.setLevel('INFO')
-LOGGER.addHandler(hd)
-tf.get_logger().setLevel('WARNING')
-LOGGER.setLevel(FLAGS.log_level)
-
-## show all FLAGS
-for flag, value in FLAGS.flag_values_dict().items():
-    LOGGER.info('FLAGS: --{}={}'.format(flag, value))
-
-# envs
-os.environ["CUDA_VISIBLE_DEVICES"] = FLAGS.gpus
-
-# # new thread for tensorboard, avoiding from annoying logging msg on notebook
-# def launchTensorBoard():
-#     os.system('tensorboard --logdir {} --bind_all --port {}'.format(
-#         FLAGS.log_path, FLAGS.port))
-#     return
-
-# # NOTE: this is a fire-and-forget thread
-# logging.info('launching tensorboard --logdir {} --bind_all --port {}'.format(
-#     FLAGS.log_path, FLAGS.port))
-# t = threading.Thread(target=launchTensorBoard, args=([]))
-# t.start()
+# init env settings
+init_tf_rlib()

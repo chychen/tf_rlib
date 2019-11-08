@@ -5,6 +5,9 @@ import tf_rlib
 from multiprocessing import Pool, Queue, Value
 import tensorflow as tf
 from tensorboard.plugins.hparams import api as hp
+from absl import flags
+
+FLAGS = flags.FLAGS
 
 
 class HParamTuner:
@@ -75,7 +78,6 @@ class HParamTuner:
         return trials
 
     def train_function(self, trial_params, dataset_fn):
-        FLAGS = tf_rlib.FLAGS
         for k, v in trial_params.items():
             setattr(FLAGS, k, v)
 
@@ -99,7 +101,7 @@ class HParamTuner:
         gpu_id_set = g_gpu_id_q.get(block=True)
         try:
             # enable the proper gpus
-            os.environ["CUDA_VISIBLE_DEVICES"] = gpu_id_set
+            tf_rlib.utils.set_gpus(gpu_id_set)
             # run training fx on the specific gpus
             results = self.train_function(trial_params, dataset_fn)
             return [trial_params, results]
