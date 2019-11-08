@@ -67,8 +67,9 @@ def init_tf_rlib(show=False):
     LOGGER.setLevel(FLAGS.log_level)
 
     ## show all FLAGS
-    for flag, value in FLAGS.flag_values_dict().items():
-        LOGGER.info('FLAGS: --{}={}'.format(flag, value))
+    if show:
+        for flag, value in FLAGS.flag_values_dict().items():
+            LOGGER.info('FLAGS: --{}={}'.format(flag, value))
 
     # envs
     os.environ["CUDA_VISIBLE_DEVICES"] = FLAGS.gpus
