@@ -32,7 +32,7 @@ class HParamTuner:
         :return:
         """
         trials = self.grid_serach(**kwargs)
-        trials = [(x, self.dataset_fn) for x in trials]
+        trials = [(x, self.dataset_fn, FLAGS.log_path) for x in trials]
 
         # build q of gpu ids so we can use them in each process
         # this is thread safe so each process can pull out a gpu id, run its task and put it back when done
@@ -79,35 +79,35 @@ class HParamTuner:
 
         return trials
 
-    def train_function(self, trial_params, dataset_fn):
+    def train_function(self, trial_params, dataset_fn, log_path):
         for k, v in trial_params.items():
             setattr(FLAGS, k, v)
 
         with session_num.get_lock():
             session_num.value = session_num.value + 1
             FLAGS.log_path = os.path.join(
-                FLAGS.log_path, 'hparam_tuning_{}'.format(session_num.value))
+                log_path, 'hparam_tuning_{}'.format(session_num.value))
 
         datasets = dataset_fn()
         runner = self.runner_cls(*datasets)
         runner.fit(FLAGS.epochs, FLAGS.lr)
         with tf.summary.create_file_writer(FLAGS.log_path).as_default():
             # add datetime as a dummy feature avoid from reducing same parameters into one
-            trial_params['datetime'] = datetime.datetime.now(timezone('Asia/Taipei')).strftime("%Y%m%d-%H%M%S")
+            trial_params['datetime'] = datetime.datetime.now(
+                timezone('Asia/Taipei')).strftime("%Y%m%d-%H%M%S")
             hp.hparams(trial_params)  # record the values used in this trial
             tf.summary.scalar('best_state', runner.best_state_record, step=1)
-
         return
 
     def _optimize_parallel_gpu(self, args):
-        trial_params, dataset_fn = args[0], args[1]
+        trial_params, dataset_fn, log_path = args[0], args[1], args[2]
         # get set of gpu ids
         gpu_id_set = g_gpu_id_q.get(block=True)
         try:
             # enable the proper gpus
             tf_rlib.utils.set_gpus(gpu_id_set)
             # run training fx on the specific gpus
-            results = self.train_function(trial_params, dataset_fn)
+            results = self.train_function(trial_params, dataset_fn, log_path)
             return [trial_params, results]
         except Exception as e:
             print('Caught exception in worker thread', e)

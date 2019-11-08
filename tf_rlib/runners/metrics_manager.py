@@ -55,7 +55,8 @@ class MetricsManager:
         if self.train_num_batch is None or self.valid_num_batch is None:
             tmp_msg = tmp_msg + 'samples/sec: unknown\n'
         else:
-            img_p_sec = (self.train_num_batch + self.valid_num_batch) * FLAGS.bs / time_cost
+            img_p_sec = (self.train_num_batch +
+                         self.valid_num_batch) * FLAGS.bs / time_cost
             tmp_msg = tmp_msg + 'samples/sec: {:.4f}\n'.format(img_p_sec)
         self.append_message(tmp_msg)
         LOGGER.info(self.message)
