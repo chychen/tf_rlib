@@ -41,6 +41,7 @@ class MetricsManager:
     def show_message(self, epoch, tensorboard=True):
         self.append_message('\nepoch: {}  '.format(epoch))
         time_cost = time.time() - self.timer
+        img_p_sec = 0.0
         results = self.get_result()
         tmp_msg = ''
         for key in self.keys:
@@ -54,11 +55,13 @@ class MetricsManager:
         if self.train_num_batch is None or self.valid_num_batch is None:
             tmp_msg = tmp_msg + 'samples/sec: unknown\n'
         else:
-            tmp_msg = tmp_msg + 'samples/sec: {:.4f}\n'.format(
-                (self.train_num_batch + self.valid_num_batch) * FLAGS.bs /
-                time_cost)
+            img_p_sec = (self.train_num_batch + self.valid_num_batch) * FLAGS.bs / time_cost
+            tmp_msg = tmp_msg + 'samples/sec: {:.4f}\n'.format(img_p_sec)
         self.append_message(tmp_msg)
         LOGGER.info(self.message)
+        if tensorboard:
+            self.add_scalar('best_record', self.best_record, epoch, False)
+            self.add_scalar('img_p_sec', img_p_sec, epoch, False)
 
     def show_image(self, x, training, epoch):
         with self.boards_writer[self._get_key(training)].as_default():
