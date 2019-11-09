@@ -25,14 +25,17 @@ def set_gpus(gpus):
 
 def reset_paths():
     # rename log/save path
-    FLAGS.log_path = os.path.join(FLAGS.local_path, FLAGS.exp_name,
-                                  FLAGS.current_time, FLAGS.log_path)
-    if not os.path.exists(FLAGS.log_path):
-        os.makedirs(FLAGS.log_path)
-    LOGGER.warn('update FLAGS: --{}={}'.format('log_path', FLAGS.log_path))
-    FLAGS.save_path = os.path.join(FLAGS.local_path, FLAGS.exp_name,
-                                   FLAGS.current_time, FLAGS.save_path)
-    LOGGER.warn('update FLAGS: --{}={}'.format('save_path', FLAGS.save_path))
+    if FLAGS.log_path is None:
+        FLAGS.log_path = os.path.join(FLAGS.local_path, FLAGS.exp_name,
+                                      FLAGS.current_time, 'log')
+        if not os.path.exists(FLAGS.log_path):
+            os.makedirs(FLAGS.log_path)
+        LOGGER.warn('update FLAGS: --{}={}'.format('log_path', FLAGS.log_path))
+    if FLAGS.save_path is None:
+        FLAGS.save_path = os.path.join(FLAGS.local_path, FLAGS.exp_name,
+                                       FLAGS.current_time, 'ckpt')
+        LOGGER.warn('update FLAGS: --{}={}'.format('save_path',
+                                                   FLAGS.save_path))
 
 
 def set_exp_name(name):
@@ -46,12 +49,19 @@ def set_xla(enable):
     tf.config.optimizer.set_jit(FLAGS.xla)
 
 
-def init_tf_rlib(show=False):
-    # rename log/save path
-    FLAGS.log_path = os.path.join(FLAGS.local_path, FLAGS.exp_name,
-                                  FLAGS.current_time, FLAGS.log_path)
-    FLAGS.save_path = os.path.join(FLAGS.local_path, FLAGS.exp_name,
-                                   FLAGS.current_time, FLAGS.save_path)
+def init_tf_rlib(show=False, first=False):
+    """
+    first(bool): if True, some flags and in first time should be checked, such as log_path save_path. 
+    """
+    if FLAGS.log_path is None or not first:
+        # rename log/save path
+        FLAGS.log_path = os.path.join(FLAGS.local_path, FLAGS.exp_name,
+                                      FLAGS.current_time, FLAGS.path_postfix,
+                                      'log')
+    if FLAGS.save_path is None or not first:
+        FLAGS.save_path = os.path.join(FLAGS.local_path, FLAGS.exp_name,
+                                       FLAGS.current_time, FLAGS.path_postfix,
+                                       'ckpt')
     # logging config
     if FLAGS.purge_logs:
         purge_logs()

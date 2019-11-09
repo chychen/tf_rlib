@@ -21,6 +21,13 @@ class MetricsManager:
             self.keys[0]: tf.summary.create_file_writer(train_log_path),
             self.keys[1]: tf.summary.create_file_writer(valid_log_path)
         }
+        markdown_str = '| key | value |\n|:-:|:-:|\n'
+        for k, v in FLAGS.flag_values_dict().items():
+            markdown_str += '| {} | {} |\n'.format(k, v)
+        with self.boards_writer[self._get_key(training=False)].as_default():
+            tf.summary.text('FLAGS',
+                            data=tf.convert_to_tensor(markdown_str),
+                            step=0)
         self.train_num_batch = None
         self.valid_num_batch = None
         self.timer = time.time()

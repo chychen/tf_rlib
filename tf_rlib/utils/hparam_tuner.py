@@ -2,12 +2,15 @@ import traceback
 import os
 import itertools
 import tf_rlib
-from multiprocessing import Pool, Queue, Value
+from multiprocessing import Pool, Queue, Value, Process
 import tensorflow as tf
 from tensorboard.plugins.hparams import api as hp
-from absl import flags
+from absl import flags, logging
 
 FLAGS = flags.FLAGS
+LOGGER = logging.get_absl_logger()
+
+KEY_NUM_GPUS = 'num_gpus'
 
 
 class HParamTuner:
@@ -22,14 +25,15 @@ class HParamTuner:
         self.dataset_fn = dataset_fn
         self.session_counter = 0
 
-    def __call__(self, **kwargs):
+    def __call__(self, trials=None, **kwargs):
         """
         Runs optimization across gpus with cuda drivers
-        :param trials:
-        :param gpu_ids: List of strings like: ['0', '1, 3']
+        :param trials: List of Dicts like: [{lr:1e-1, wd:1e-4}, {lr:1e-2, wd:1e-4, bs:256}]
         :return:
         """
-        trials = self.grid_serach(**kwargs)
+        if trials is None:
+            trials = self.grid_serach(**kwargs)
+        # append dataset_fn and path
         trials = [(x, self.dataset_fn, FLAGS.log_path) for x in trials]
 
         # build q of gpu ids so we can use them in each process
@@ -79,12 +83,14 @@ class HParamTuner:
 
     def train_function(self, trial_params, dataset_fn, log_path):
         for k, v in trial_params.items():
-            setattr(FLAGS, k, v)
+            if k in FLAGS.flag_values_dict() or k == KEY_NUM_GPUS:
+                setattr(FLAGS, k, v)
+            else:
+                raise ValueError('--{} not in FLAGS'.format(k))
 
         with session_num.get_lock():
             session_num.value = session_num.value + 1
-            FLAGS.log_path = os.path.join(
-                log_path, 'hparam_tuning_{}'.format(session_num.value))
+            FLAGS.path_postfix = 'hparam_{}'.format(session_num.value)
 
         datasets = dataset_fn()
         runner = self.runner_cls(*datasets)
@@ -93,13 +99,22 @@ class HParamTuner:
             # add log_path as a dummy feature avoid from reducing same parameters into one
             trial_params['log_path'] = FLAGS.log_path
             hp.hparams(trial_params)  # record the values used in this trial
-            tf.summary.scalar('best_state', runner.best_state_record, step=1)
+            tf.summary.scalar(runner.best_state,
+                              runner.best_state_record,
+                              step=0)
         return
 
     def _optimize_parallel_gpu(self, args):
         trial_params, dataset_fn, log_path = args[0], args[1], args[2]
+        if KEY_NUM_GPUS in trial_params:
+            num_gpus = trial_params[KEY_NUM_GPUS]
+        else:
+            num_gpus = 1
         # get set of gpu ids
-        gpu_id_set = g_gpu_id_q.get(block=True)
+        gpu_id_set = []
+        for _ in range(num_gpus):
+            gpu_id_set.append(g_gpu_id_q.get(block=True))
+        gpu_id_set = ",".join(gpu_id_set)
         try:
             # enable the proper gpus
             tf_rlib.utils.set_gpus(gpu_id_set)
