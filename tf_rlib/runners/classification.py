@@ -9,6 +9,7 @@
 - [v] WeightDecay
 """
 import tensorflow as tf
+import tensorflow_addons as tfa
 from tf_rlib.models import PyramidNet
 from tf_rlib.runners import runner
 from absl import flags
@@ -37,10 +38,11 @@ class ClassificationRunner(runner.Runner):
         self.loss_object = tf.keras.losses.SparseCategoricalCrossentropy(
             from_logits=True,
             reduction=tf.keras.losses.Reduction.NONE)  # distributed-aware
-        self.optim = tf.keras.optimizers.Adam(FLAGS.lr,
-                                              beta_1=FLAGS.adam_beta_1,
-                                              beta_2=FLAGS.adam_beta_2,
-                                              epsilon=FLAGS.adam_epsilon)
+        self.optim = tfa.optimizers.AdamW(weight_decay=FLAGS.wd,
+                                          lr=FLAGS.lr,
+                                          beta_1=FLAGS.adam_beta_1,
+                                          beta_2=FLAGS.adam_beta_2,
+                                          epsilon=FLAGS.adam_epsilon)
         return {'pyramidnet': self.model}, train_metrics, valid_metrics
 
     def begin_fit_callback(self, lr):
@@ -55,8 +57,12 @@ class ClassificationRunner(runner.Runner):
         else:
             self.lr_scheduler.decay_steps = epochs
             self.optim.lr = self.lr_scheduler(epoch_id)
+            # also update weight decay
+
+        self.optim.weight_decay = FLAGS.wd * self.optim.lr / self.init_lr
 
         self.log_scalar('lr', self.optim.lr, epoch_id, training=True)
+        self.log_scalar('wd', self.optim.weight_decay, epoch_id, training=True)
 
     def train_step(self, x, y):
         """
@@ -74,6 +80,7 @@ class ClassificationRunner(runner.Runner):
             regularization_loss = tf.nn.scale_regularization_loss(
                 tf.math.add_n(self.model.losses))  # distributed-aware
             total_loss = loss + regularization_loss
+            total_loss = loss
 
         grads = tape.gradient(total_loss, self.model.trainable_weights)
         self.optim.apply_gradients(zip(grads, self.model.trainable_weights))
