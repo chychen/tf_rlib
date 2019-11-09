@@ -1,8 +1,6 @@
 import traceback
 import os
 import itertools
-from pytz import timezone
-import datetime
 import tf_rlib
 from multiprocessing import Pool, Queue, Value
 import tensorflow as tf
@@ -92,9 +90,8 @@ class HParamTuner:
         runner = self.runner_cls(*datasets)
         runner.fit(FLAGS.epochs, FLAGS.lr)
         with tf.summary.create_file_writer(FLAGS.log_path).as_default():
-            # add datetime as a dummy feature avoid from reducing same parameters into one
-            trial_params['datetime'] = datetime.datetime.now(
-                timezone('Asia/Taipei')).strftime("%Y%m%d-%H%M%S")
+            # add log_path as a dummy feature avoid from reducing same parameters into one
+            trial_params['log_path'] = FLAGS.log_path
             hp.hparams(trial_params)  # record the values used in this trial
             tf.summary.scalar('best_state', runner.best_state_record, step=1)
         return
