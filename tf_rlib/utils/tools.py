@@ -66,13 +66,15 @@ def init_tf_rlib(show=False):
     tf.get_logger().setLevel('WARNING')
     LOGGER.setLevel(FLAGS.log_level)
 
-    ## show all FLAGS
-    if show:
-        for flag, value in FLAGS.flag_values_dict().items():
-            LOGGER.info('FLAGS: --{}={}'.format(flag, value))
-
     # envs
     os.environ["CUDA_VISIBLE_DEVICES"] = FLAGS.gpus
     # enable XLA
     tf.keras.backend.clear_session()
     tf.config.optimizer.set_jit(FLAGS.xla)
+
+    if show:
+        ## show all FLAGS
+        for flag, value in FLAGS.flag_values_dict().items():
+            LOGGER.info('FLAGS: --{}={}'.format(flag, value))
+        if not FLAGS.xla:
+            LOGGER.warn('enable --xla=True is recommended for ~10% speedup.')
