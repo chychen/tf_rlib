@@ -138,3 +138,12 @@ class MetricsManager:
     def _get_key(self, training):
         key = MetricsManager.KEY_TRAIN if training else MetricsManager.KEY_VALID
         return key
+
+    def register_hparams(self):
+        from tensorboard.plugins.hparams import api as hp
+        hparams = {}
+        for k, v in FLAGS.flag_values_dict().items():
+            if v is not None:
+                hparams[k] = v
+        with tf.summary.create_file_writer(FLAGS.log_path).as_default():
+            hp.hparams(hparams)  # record the values used in this trial

@@ -4,7 +4,6 @@ import itertools
 import tf_rlib
 from multiprocessing import Pool, Queue, Value, Process
 import tensorflow as tf
-from tensorboard.plugins.hparams import api as hp
 from absl import flags, logging
 
 FLAGS = flags.FLAGS
@@ -24,6 +23,7 @@ class HParamTuner:
         self.gpu_ids = gpu_ids
         self.dataset_fn = dataset_fn
         self.session_counter = 0
+        self.all_results = []
 
     def __call__(self, trials=None, **kwargs):
         """
@@ -60,6 +60,7 @@ class HParamTuner:
         self.session_counter = local_session_num.value
         pool.close()
         pool.join()
+        self.all_results.append(results)
         return results
 
     def grid_serach(self, **kwargs):
@@ -78,7 +79,6 @@ class HParamTuner:
                 for k, v in one_dict.items():
                     temp[k] = v
             trials.append(temp)
-
         return trials
 
     def train_function(self, trial_params, dataset_fn, log_path):
@@ -95,14 +95,7 @@ class HParamTuner:
         datasets = dataset_fn()
         runner = self.runner_cls(*datasets)
         runner.fit(FLAGS.epochs, FLAGS.lr)
-        with tf.summary.create_file_writer(FLAGS.log_path).as_default():
-            # add log_path as a dummy feature avoid from reducing same parameters into one
-            trial_params['log_path'] = FLAGS.log_path
-            hp.hparams(trial_params)  # record the values used in this trial
-            tf.summary.scalar(runner.best_state,
-                              runner.best_state_record,
-                              step=0)
-        return
+        return runner.best_state_record
 
     def _optimize_parallel_gpu(self, args):
         trial_params, dataset_fn, log_path = args[0], args[1], args[2]
