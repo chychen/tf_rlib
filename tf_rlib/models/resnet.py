@@ -48,7 +48,7 @@ class ResNet_Cifar10(models.Model):
                        preact=False,
                        last_norm=False,
                        shortcut_type='project'))
-        LOGGER.warn('filters: {}'.format(filters))
+        LOGGER.debug('filters: {}'.format(filters))
         for _ in range(1, num_block):
             all_blocks.append(
                 self.block(filters,
@@ -56,7 +56,7 @@ class ResNet_Cifar10(models.Model):
                            preact=False,
                            last_norm=False,
                            shortcut_type='project'))
-            LOGGER.warn('filters: {}'.format(filters))
+            LOGGER.debug('filters: {}'.format(filters))
         return tf.keras.Sequential(all_blocks)
 
     def call(self, x):
