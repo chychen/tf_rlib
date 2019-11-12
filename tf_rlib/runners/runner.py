@@ -161,6 +161,7 @@ class Runner:
 
                 # logging
                 self.matrics_manager.show_message(self.epoch)
+            self.matrics_manager.register_hparams()
 
     def save(self, path):
         for key, model in self.models.items():

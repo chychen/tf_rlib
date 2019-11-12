@@ -32,8 +32,9 @@ flags.DEFINE_string('current_time', current_time,
 flags.DEFINE_string(
     'local_path', '/results',
     'tmp folder')  # NOTE: save in local is faster than mounted location
-flags.DEFINE_string('log_path', 'log', 'path for logging files')
-flags.DEFINE_string('save_path', 'ckpt', 'path for ckpt files')
+flags.DEFINE_string('log_path', None, 'path for logging files')
+flags.DEFINE_string('path_postfix', '', 'postfix after log_path')
+flags.DEFINE_string('save_path', None, 'path for ckpt files')
 flags.DEFINE_string('exp_name', 'default', 'name for this experiment')
 flags.DEFINE_string('comment', None, 'any comment?')
 flags.DEFINE_string('benchmark_runner', None, 'any comment?')
@@ -66,7 +67,9 @@ flags.DEFINE_float('adam_epsilon', 1e-8,
                    'adam epsilon, the larger epsilon, the closer to SGD')
 ## Regularizer
 flags.DEFINE_float('l1', 0.0, 'l1 regularizer')
-flags.DEFINE_float('l2', 1e-4, 'l2 regularizer')
+flags.DEFINE_float('l2', 0.0, 'l2 regularizer')
+flags.DEFINE_float('wd', 1e-4,
+                   'weight decay in correct way, such as AdamW, SGDW')
 ## Conv
 flags.DEFINE_string('kernel_initializer', 'he_normal',
                     'kernel_initializer, such as [he_normal, glorot_uniform]')
@@ -111,4 +114,4 @@ except:
     LOGGER.info('init flags')
 
 # init env settings
-init_tf_rlib()
+init_tf_rlib(first=True)
