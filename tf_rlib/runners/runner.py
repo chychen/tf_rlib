@@ -55,6 +55,7 @@ class Runner:
                     self.matrics_manager.add_metrics(k, v, training=True)
                 for k, v in valid_metrics.items():
                     self.matrics_manager.add_metrics(k, v, training=False)
+                
 
     def init(self):
         raise NotImplementedError
@@ -87,6 +88,16 @@ class Runner:
         """
         raise NotImplementedError
 
+    def evaluate_step(self, x, y):
+        """
+        Args:
+            x (batch): mini batch data
+            y (batch): mini batch label
+        Returns:
+            metrics (dict)
+        """
+        raise NotImplementedError
+
     @tf.function
     def _validate_step(self, x, y):
         def valid_fn(x, y):
@@ -96,9 +107,22 @@ class Runner:
         self.strategy.experimental_run_v2(valid_fn, args=(x, y))
 
     @tf.function
+    def _evaluate_step(self, x, y):
+        self.strategy.experimental_run_v2(self.evaluate_step, args=(x, y)) # TODO
+
+    @tf.function
     def inference(self, dataset):
         raise NotImplementedError
 
+    def evaluate(self, dataset):
+        for _, (x_batch, y_batch) in enumerate(dataset):
+            self._evaluate_step(x_batch, y_batch)
+            
+        ret_dict = {} # TODO
+        for k, v in self.test_metrics.items(): # TODO
+            ret_dict[k] = self.test_metrics[k].result() # TODO
+        return ret_dict # TODO
+        
     def begin_fit_callback(self, lr):
         pass
 
@@ -111,6 +135,8 @@ class Runner:
             train_pbar = tqdm(desc='train', leave=False)
             valid_pbar = tqdm(desc='valid', leave=False)
             for e_idx in range(epochs):
+                train_num_batch = 0
+                valid_num_batch = 0
                 first_e_timer = time.time()
                 self.begin_epoch_callback(self.epoch, epochs)
                 self.epoch = self.epoch + 1
@@ -134,10 +160,9 @@ class Runner:
 
                 # validate one epoch
                 if self.valid_dataset is not None:
-                    for valid_num_batch, (x_batch, y_batch) in enumerate(
-                            self.valid_dataset):
+                    for valid_num_batch, (x_batch, y_batch) in enumerate(self.valid_dataset):
                         self._validate_step(x_batch, y_batch)
-                        valid_pbar.update(1)
+                    valid_pbar.update(1)
                     if self.matrics_manager.is_better_state():
                         self.save_best()
                         valid_pbar.set_postfix({

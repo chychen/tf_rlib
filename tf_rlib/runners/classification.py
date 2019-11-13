@@ -24,6 +24,10 @@ class ClassificationRunner(runner.Runner):
         super(ClassificationRunner, self).__init__(train_dataset,
                                                    valid_dataset=valid_dataset,
                                                    best_state='acc')
+        self.test_metrics = {
+            'loss': tf.keras.metrics.Mean('loss'),# TODO
+            'acc': tf.keras.metrics.SparseCategoricalAccuracy('acc')# TODO
+        }
 
     def init(self):
         self.model = PyramidNet()
@@ -100,7 +104,45 @@ class ClassificationRunner(runner.Runner):
         loss = tf.nn.compute_average_loss(loss, global_batch_size=FLAGS.bs)
         probs = tf.nn.softmax(logits)
         return {'loss': [loss], 'acc': [y, probs]}
-
+    
+    def _TTA(self, x, size):
+        # augment
+        pad_range = [4, 4]
+        paddings = tf.constant([[0, 0], pad_range, pad_range, [0, 0]])
+        x_pad = tf.pad(x, paddings, mode='CONSTANT')
+        x_zi = x_pad[:, :size[0], :size[1]]
+        x_zo = x_pad[:, -size[0]:, -size[1]:]
+        # predict and average
+        logits = self.model(x, training=False)
+        logits_zi = self.model(x_zi, training=False)
+        logits_zo = self.model(x_zo, training=False)
+        return (logits+logits_zi+logits_zo)/3
+    
     @tf.function
-    def inference(self, dataset):
-        raise NotImplementedError
+    def inference(self, x):
+        """
+        With zoom-in zoom-out TTA implementation
+        """
+        bs = FLAGS.bs
+        iters = int(len(x)/bs)
+        remain = len(x)%bs
+        results = []
+        for i in range(iters):
+            data = x[i*bs:(i+1)*bs]
+            size = data.shape[1:3]
+            result = self._TTA(data, size)
+            results.append(result)
+        if remain:
+            data = x[-remain:]
+            size = data.shape[1:3]
+            result = self._TTA(data, size)
+            results.append(result)
+        return tf.concat(results, axis=0)
+
+    def evaluate_step(self, x, y):
+        logits = self.inference(x)
+        loss = self.loss_object(y, logits)
+        loss = tf.nn.compute_average_loss(loss, global_batch_size=FLAGS.bs)
+        probs = tf.nn.softmax(logits)
+        self.test_metrics['loss'].update_state(loss) # TODO
+        self.test_metrics['acc'].update_state(y, probs) # TODO
