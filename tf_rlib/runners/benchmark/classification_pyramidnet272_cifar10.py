@@ -23,6 +23,7 @@ class ClassificationPyramidNet272Cifar10(runner.Runner):
         FLAGS.gpus = '0,1,2,3'
         FLAGS.exp_name = ClassificationPyramidNet272Cifar10.__name__
         # pyramidnet-272
+        FLAGS.l2 = 1e-4
         FLAGS.depth = 272
         FLAGS.model_alpha = 200
         FLAGS.bottleneck = True
