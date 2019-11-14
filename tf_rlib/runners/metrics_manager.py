@@ -49,7 +49,7 @@ class MetricsManager:
         self.append_message('\nepoch: {}  '.format(epoch))
         time_cost = time.time() - self.timer
         img_p_sec = 0.0
-        results = self.get_result()
+        results = self.get_result(keys=self.keys)
         tmp_msg = ''
         for key in self.keys:
             for k, v in results[key].items():
@@ -86,16 +86,16 @@ class MetricsManager:
         else:
             raise ValueError
 
-    def get_result(self):
+    def get_result(self, keys=None):
         ret_dict = {}
-        for key in self.keys:
+        for key in keys:
             ret_dict[key] = dict()
             for k, v in self.metrics[key].items():
                 ret_dict[key][k] = self.metrics[key][k].result()
         return ret_dict
 
     def is_better_state(self):
-        results = self.get_result()
+        results = self.get_result(keys=self.keys)
         valid_results = results[MetricsManager.KEY_VALID]
         if self.best_state not in valid_results:
             raise ValueError(
