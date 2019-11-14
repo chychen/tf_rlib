@@ -68,7 +68,7 @@ flags.DEFINE_float('adam_epsilon', 1e-8,
 ## Regularizer
 flags.DEFINE_float('l1', 0.0, 'l1 regularizer')
 flags.DEFINE_float('l2', 0.0, 'l2 regularizer')
-flags.DEFINE_float('wd', 1e-4,
+flags.DEFINE_float('wd', 0.0,
                    'weight decay in correct way, such as AdamW, SGDW')
 ## Conv
 flags.DEFINE_string('kernel_initializer', 'he_normal',
