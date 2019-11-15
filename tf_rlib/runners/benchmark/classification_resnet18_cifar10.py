@@ -25,6 +25,7 @@ class ClassificationResNet18Cifar10(runner.Runner):
         # cifar10
         train_dataset, valid_dataset = get_cifar10()
         # resnet-18
+        FLAGS.l2 = 1e-4
         FLAGS.depth = 18
         train_dataset, valid_dataset = get_cifar10()
         super(ClassificationResNet18Cifar10,

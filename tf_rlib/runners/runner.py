@@ -1,6 +1,7 @@
 import os
 import time
 import numpy as np
+import copy
 from tqdm.auto import tqdm
 from absl import flags, logging
 import tensorflow as tf
@@ -22,15 +23,23 @@ class Runner:
             models (dict): key(str), value(tf.keras.)
             metrics (dict): key(str), value(tf.keras.metrics.Metric)
         """
+        self.train_dataset = train_dataset
+        self.valid_dataset = valid_dataset
         utils.init_tf_rlib(show=True)
         self.strategy = tf.distribute.MirroredStrategy()
         LOGGER.info('Number of devices: {}'.format(
             self.strategy.num_replicas_in_sync))
+
+        self.epoch = 0
+        self.step = 0
+        self.save_path = FLAGS.save_path
+        self.best_state = best_state
+        self.matrics_manager = MetricsManager(best_state)
         with self.strategy.scope():
             self.models, train_metrics, valid_metrics = self.init()
-            self.train_dataset = self.strategy.experimental_distribute_dataset(
+            self.train_dataset_dtb = self.strategy.experimental_distribute_dataset(
                 train_dataset)
-            self.valid_dataset = self.strategy.experimental_distribute_dataset(
+            self.valid_dataset_dtb = self.strategy.experimental_distribute_dataset(
                 valid_dataset)
 
             # weights init in first call()
@@ -41,21 +50,22 @@ class Runner:
                         dtype=tf.float32))
                 LOGGER.info('{} model contains {} trainable variables.'.format(
                     key, model.num_params))
-            self.epoch = 0
-            self.step = 0
-            self.save_path = FLAGS.save_path
-            self.best_state = best_state
-            self.matrics_manager = MetricsManager(best_state)
             if train_metrics is None or valid_metrics is None:
                 raise ValueError(
                     'metrics are required, Note: please use tf.keras.metrics.MeanTensor to compute the training loss, which is more efficient by avoiding redundant tain loss computing.'
                 )
             else:
                 for k, v in train_metrics.items():
-                    self.matrics_manager.add_metrics(k, v, training=True)
+                    self.matrics_manager.add_metrics(k, v,
+                                                     MetricsManager.KEY_TRAIN)
                 for k, v in valid_metrics.items():
-                    self.matrics_manager.add_metrics(k, v, training=False)
-                
+                    self.matrics_manager.add_metrics(k, v,
+                                                     MetricsManager.KEY_VALID)
+        if valid_metrics is not None:
+            for k, v in valid_metrics.items():
+                self.matrics_manager.add_metrics(
+                    k, tf.keras.metrics.__dict__[v.__class__.__name__](
+                        MetricsManager.KEY_TEST), MetricsManager.KEY_TEST)
 
     def init(self):
         raise NotImplementedError
@@ -74,7 +84,7 @@ class Runner:
     def _train_step(self, x, y):
         def train_fn(x, y):
             metrics = self.train_step(x, y)
-            self.matrics_manager.update(metrics, training=True)
+            self.matrics_manager.update(metrics, MetricsManager.KEY_TRAIN)
 
         self.strategy.experimental_run_v2(train_fn, args=(x, y))
 
@@ -88,41 +98,29 @@ class Runner:
         """
         raise NotImplementedError
 
-    def evaluate_step(self, x, y):
-        """
-        Args:
-            x (batch): mini batch data
-            y (batch): mini batch label
-        Returns:
-            metrics (dict)
-        """
-        raise NotImplementedError
-
     @tf.function
     def _validate_step(self, x, y):
         def valid_fn(x, y):
             metrics = self.validate_step(x, y)
-            self.matrics_manager.update(metrics, training=False)
+            self.matrics_manager.update(metrics, MetricsManager.KEY_VALID)
 
         self.strategy.experimental_run_v2(valid_fn, args=(x, y))
-
-    @tf.function
-    def _evaluate_step(self, x, y):
-        self.strategy.experimental_run_v2(self.evaluate_step, args=(x, y)) # TODO
 
     @tf.function
     def inference(self, dataset):
         raise NotImplementedError
 
-    def evaluate(self, dataset):
+    def evaluate(self, dataset=None):
+        """ inference on single gpu only
+        """
+        if dataset is None:
+            dataset = self.valid_dataset
         for _, (x_batch, y_batch) in enumerate(dataset):
-            self._evaluate_step(x_batch, y_batch)
-            
-        ret_dict = {} # TODO
-        for k, v in self.test_metrics.items(): # TODO
-            ret_dict[k] = self.test_metrics[k].result() # TODO
-        return ret_dict # TODO
-        
+            metrics = self.validate_step(x_batch, y_batch)
+            self.matrics_manager.update(metrics, MetricsManager.KEY_TEST)
+
+        return self.matrics_manager.get_result(keys=[MetricsManager.KEY_TEST])
+
     def begin_fit_callback(self, lr):
         pass
 
@@ -147,7 +145,7 @@ class Runner:
                 # begin_epoch_callback
                 # train one epoch
                 for train_num_batch, (x_batch, y_batch) in enumerate(
-                        self.train_dataset):
+                        self.train_dataset_dtb):
                     self.step = self.step + 1
                     if FLAGS.profile:
                         with profiler.Profiler(
@@ -159,10 +157,11 @@ class Runner:
                 self._log_data(x_batch, training=True)
 
                 # validate one epoch
-                if self.valid_dataset is not None:
-                    for valid_num_batch, (x_batch, y_batch) in enumerate(self.valid_dataset):
+                if self.valid_dataset_dtb is not None:
+                    for valid_num_batch, (x_batch, y_batch) in enumerate(
+                            self.valid_dataset_dtb):
                         self._validate_step(x_batch, y_batch)
-                    valid_pbar.update(1)
+                        valid_pbar.update(1)
                     if self.matrics_manager.is_better_state():
                         self.save_best()
                         valid_pbar.set_postfix({
@@ -203,7 +202,8 @@ class Runner:
         self.load(os.path.join(self.save_path, 'best'))
 
     def log_scalar(self, key, value, step, training):
-        self.matrics_manager.add_scalar(key, value, step, training)
+        key = MetricsManager.KEY_TRAIN if training else MetricsManager.KEY_VALID
+        self.matrics_manager.add_scalar(key, value, step, key)
 
     @property
     def best_state_record(self):
@@ -219,11 +219,12 @@ class Runner:
         return num_batch, num_data
 
     def _log_data(self, x_batch, training):
+        key = MetricsManager.KEY_TRAIN if training else MetricsManager.KEY_VALID
         if FLAGS.dim == 2:
             if self.strategy.num_replicas_in_sync == 1:
                 x_batch_local = x_batch
             else:
                 x_batch_local = x_batch.values[0]
             self.matrics_manager.show_image(x_batch_local,
-                                            training=training,
+                                            key,
                                             epoch=self.epoch)

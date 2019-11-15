@@ -10,11 +10,19 @@ LOGGER = logging.get_absl_logger()
 class MetricsManager:
     KEY_TRAIN = 'train'
     KEY_VALID = 'valid'
+    KEY_TEST = 'test'
 
     def __init__(self, best_state):
         self.message = ''
-        self.keys = [MetricsManager.KEY_TRAIN, MetricsManager.KEY_VALID]
-        self.metrics = {self.keys[0]: dict(), self.keys[1]: dict()}
+        self.keys = [
+            MetricsManager.KEY_TRAIN, MetricsManager.KEY_VALID,
+            MetricsManager.KEY_TEST
+        ]
+        self.metrics = {
+            self.keys[0]: dict(),
+            self.keys[1]: dict(),
+            self.keys[2]: dict()
+        }
         train_log_path = os.path.join(FLAGS.log_path, self.keys[0])
         valid_log_path = os.path.join(FLAGS.log_path, self.keys[1])
         self.boards_writer = {
@@ -24,7 +32,7 @@ class MetricsManager:
         markdown_str = '| key | value |\n|:-:|:-:|\n'
         for k, v in FLAGS.flag_values_dict().items():
             markdown_str += '| {} | {} |\n'.format(k, v)
-        with self.boards_writer[self._get_key(training=False)].as_default():
+        with self.boards_writer[MetricsManager.KEY_VALID].as_default():
             tf.summary.text('FLAGS',
                             data=tf.convert_to_tensor(markdown_str),
                             step=0)
@@ -35,23 +43,24 @@ class MetricsManager:
         self.best_state_policy, self.best_record = self._state_policy_mapper(
             best_state)
 
-    def add_metrics(self, name, tf_metrics, training):
-        self.metrics[self._get_key(training)][name] = tf_metrics
+    def add_metrics(self, name, tf_metrics, key):
+        self.metrics[key][name] = tf_metrics
 
     def append_message(self, msg):
         self.message = self.message + msg
 
-    def add_scalar(self, key, value, epoch, training):
-        with self.boards_writer[self._get_key(training)].as_default():
-            tf.summary.scalar(key, value, step=epoch)
+    def add_scalar(self, tag, value, epoch, key):
+        with self.boards_writer[key].as_default():
+            tf.summary.scalar(tag, value, step=epoch)
 
     def show_message(self, epoch, tensorboard=True):
         self.append_message('\nepoch: {}  '.format(epoch))
         time_cost = time.time() - self.timer
         img_p_sec = 0.0
-        results = self.get_result(keys=self.keys)
+        results = self.get_result(
+            keys=[MetricsManager.KEY_TRAIN, MetricsManager.KEY_VALID])
         tmp_msg = ''
-        for key in self.keys:
+        for key in [MetricsManager.KEY_TRAIN, MetricsManager.KEY_VALID]:
             for k, v in results[key].items():
                 tmp_msg = tmp_msg + '{}_{}: {:.4f}  '.format(key, k, v.numpy())
                 if tensorboard:
@@ -68,21 +77,23 @@ class MetricsManager:
         self.append_message(tmp_msg)
         LOGGER.info(self.message)
         if tensorboard:
-            self.add_scalar('best_record', self.best_record, epoch, False)
-            self.add_scalar('img_p_sec', img_p_sec, epoch, False)
+            self.add_scalar('best_record', self.best_record, epoch,
+                            MetricsManager.KEY_VALID)
+            self.add_scalar('img_p_sec', img_p_sec, epoch,
+                            MetricsManager.KEY_VALID)
 
-    def show_image(self, x, training, epoch):
-        with self.boards_writer[self._get_key(training)].as_default():
+    def show_image(self, x, key, epoch):
+        with self.boards_writer[key].as_default():
             tf.summary.image('image', x, step=epoch, max_outputs=3)
 
-    def update(self, data, training):
+    def update(self, data, key):
         """
         Args
             data (dict): key(str), value(list)
         """
         if type(data) == dict:
             for k, v in data.items():
-                self.metrics[self._get_key(training)][k].update_state(*v)
+                self.metrics[key][k].update_state(*v)
         else:
             raise ValueError
 
@@ -95,7 +106,8 @@ class MetricsManager:
         return ret_dict
 
     def is_better_state(self):
-        results = self.get_result(keys=self.keys)
+        results = self.get_result(
+            keys=[MetricsManager.KEY_TRAIN, MetricsManager.KEY_VALID])
         valid_results = results[MetricsManager.KEY_VALID]
         if self.best_state not in valid_results:
             raise ValueError(
@@ -103,10 +115,13 @@ class MetricsManager:
                 .format(self.best_state))
         return self._update_best_record(valid_results[self.best_state].numpy())
 
+    def reset_metrics(self, key):
+        for k, v in self.metrics[key].items():
+            self.metrics[key][k].reset_states()
+
     def reset(self):
         for key in self.keys:
-            for k, v in self.metrics[key].items():
-                self.metrics[key][k].reset_states()
+            self.reset_metrics(key)
 
         self.timer = time.time()
         self.num_data = 0
@@ -134,10 +149,6 @@ class MetricsManager:
             return min, float('inf')
         else:
             raise ValueError
-
-    def _get_key(self, training):
-        key = MetricsManager.KEY_TRAIN if training else MetricsManager.KEY_VALID
-        return key
 
     def register_hparams(self):
         from tensorboard.plugins.hparams import api as hp
