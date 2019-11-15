@@ -1,5 +1,4 @@
-exp/log/
-exp/ckpt/
+exp/
 *.index
 
 # Byte-compiled / optimized / DLL files
