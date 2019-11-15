@@ -16,7 +16,7 @@ class ClassificationPyramidNet272Cifar10(runner.Runner):
     Epochs: 300
     Scheduled LR: 1e-1 (1-150), 1e-2 (150-225), 1e-3 (225-300)
     Optimizer: SGD+momentum(0.9)+nesterov
-    Accuracy%: ?
+    Accuracy%: 96.66%
     Parameters: 26,049,562
     """
     def __init__(self):
