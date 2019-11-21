@@ -6,6 +6,7 @@ from tqdm.auto import tqdm
 from absl import flags, logging
 import tensorflow as tf
 from tensorflow.python.eager import profiler
+import tf_rlib
 from tf_rlib.runners import MetricsManager
 from tf_rlib import utils
 
@@ -63,9 +64,14 @@ class Runner:
                                                      MetricsManager.KEY_VALID)
         if valid_metrics is not None:
             for k, v in valid_metrics.items():
-                self.matrics_manager.add_metrics(
-                    k, tf.keras.metrics.__dict__[v.__class__.__name__](
-                        MetricsManager.KEY_TEST), MetricsManager.KEY_TEST)
+                if v.__class__.__name__ in tf.keras.metrics.__dict__:
+                    self.matrics_manager.add_metrics(
+                        k, tf.keras.metrics.__dict__[v.__class__.__name__](
+                            MetricsManager.KEY_TEST), MetricsManager.KEY_TEST)
+                else:
+                    self.matrics_manager.add_metrics(
+                        k, tf_rlib.metrics.__dict__[v.__class__.__name__](
+                            MetricsManager.KEY_TEST), MetricsManager.KEY_TEST)
 
     def init(self):
         raise NotImplementedError

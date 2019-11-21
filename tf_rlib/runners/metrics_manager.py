@@ -147,6 +147,8 @@ class MetricsManager:
             return max, float('-inf')
         if state == 'mae' or state == 'mse' or state == 'l1' or state == 'l2':
             return min, float('inf')
+        if state == 'dice_coef':
+            return max, float('-inf')
         else:
             raise ValueError
 

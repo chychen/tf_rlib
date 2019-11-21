@@ -3,19 +3,22 @@ import tensorflow_addons as tfa
 from tf_rlib.models import UNet as net
 from tf_rlib.runners import runner
 from tf_rlib.metrics import DiceCoefficient
-from tf_rlib.losses import DiceLoss, CustomLoss
+from tf_rlib.losses import CustomLoss
 from tf_rlib.losses.dice_loss import dice_loss
 from absl import flags
 from absl import logging
 import numpy as np
-from tensorflow.python.keras.metrics import MeanMetricWrapper
 
 FLAGS = flags.FLAGS
 
+
 def loss(y_true, y_pred, smooth=1):
     dice = dice_loss(y_true, y_pred, smooth=1)
-    bce = tf.keras.backend.mean(tf.keras.losses.binary_crossentropy(y_true, y_pred), axis=tuple(i+1 for i in range(tf.shape(y_true).shape[0]-2)))
-    return bce+dice
+    ce = tf.keras.backend.mean(
+        tf.keras.losses.categorical_crossentropy(y_true, y_pred),
+        axis=tuple(i + 1 for i in range(tf.shape(y_true).shape[0] - 2)))
+    return dice + ce
+
 
 class SegmentationRunner(runner.Runner):
     def __init__(self, train_dataset, valid_dataset=None):
@@ -33,11 +36,8 @@ class SegmentationRunner(runner.Runner):
             'loss': tf.keras.metrics.Mean('loss'),
             'dice_coef': DiceCoefficient()
         }
-        self.loss_object = tf.keras.losses.CategoricalCrossentropy(
-            from_logits=False,
-            reduction=tf.keras.losses.Reduction.NONE)  # distributed-aware
-#         self.loss_object = DiceLoss(reduction=tf.keras.losses.Reduction.NONE)
-#         self.loss_object = CustomLoss(loss, reduction=tf.keras.losses.Reduction.NONE)
+        self.loss_object = CustomLoss(loss,
+                                      reduction=tf.keras.losses.Reduction.NONE)
         self.optim = tfa.optimizers.AdamW(weight_decay=FLAGS.wd,
                                           lr=0.0,
                                           beta_1=FLAGS.adam_beta_1,
@@ -103,9 +103,6 @@ class SegmentationRunner(runner.Runner):
 
     @tf.function
     def inference(self, x):
-        """
-        With zoom-in zoom-out TTA implementation
-        """
         bs = FLAGS.bs
         iters = int(len(x) / bs)
         remain = len(x) % bs
