@@ -109,10 +109,10 @@ class SegmentationRunner(runner.Runner):
         results = []
         for i in range(iters):
             data = x[i * bs:(i + 1) * bs]
-            result = self.model(data)
+            result = self.model(data, training=False)
             results.append(result)
         if remain:
             data = x[i * bs:(i + 1) * bs]
-            result = self.model(data)
+            result = self.model(data, training=False)
             results.append(result)
         return tf.concat(results, axis=0)

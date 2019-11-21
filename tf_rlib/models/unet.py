@@ -8,48 +8,6 @@ LOGGER = logging.get_absl_logger()
 import tensorflow as tf
 from tf_rlib import layers, blocks
 
-
-class DownBlock(blocks.Block):
-    '''
-    Pooling + resBlock
-    '''
-    def __init__(self, n_filters, pool_size=2):
-        super(DownBlock, self).__init__(n_filters)
-        self.pool = layers.Pooling(pool_size=pool_size)
-        self.res_block = blocks.ResBlock(n_filters)
-
-    def call(self, x):
-        x = self.pool(x)
-        x = self.res_block(x)
-        return x
-
-
-class UpBlock(blocks.Block):
-    '''
-    UpSampling + Concat + ResBlock
-    '''
-    def __init__(self, n_filters, up_size=2, with_concat=True):
-        super(UpBlock, self).__init__(n_filters)
-        self.with_concat = with_concat
-        self.upsampling = layers.UpSampling(up_size=up_size)
-        self.concat = tf.keras.layers.Concatenate()
-        self.project = blocks.BasicBlock(n_filters,
-                                         3,
-                                         use_norm=False,
-                                         use_act=False)
-        self.res_block = blocks.ResBlock(n_filters)
-
-    def call(self, x):
-        if self.with_concat:
-            x, map_ = x
-        x = self.upsampling(x)
-        if self.with_concat:
-            x = self.concat([x, map_])
-            x = self.project(x)
-        x = self.res_block(x)
-        return x
-
-
 class UNet(models.Model):
     def __init__(self, init_filters=32, depth=4):
         super(UNet, self).__init__()
@@ -80,7 +38,7 @@ class UNet(models.Model):
     def _get_down_blocks(self):
         group = []
         for i in range(self.depth):
-            down_blocks = [DownBlock(self.init_filters * 2**(i + 1))]
+            down_blocks = [blocks.DownBlock(self.init_filters * 2**(i + 1))]
             group.append(tf.keras.Sequential(down_blocks))
         return group
 
@@ -88,7 +46,7 @@ class UNet(models.Model):
         group = []
         for i in range(self.depth):
             up_blocks = [
-                UpBlock(self.init_filters * 2**(self.depth - i - 1),
+                blocks.UpBlock(self.init_filters * 2**(self.depth - i - 1),
                         with_concat=True)
             ]
             group.append(tf.keras.Sequential(up_blocks))

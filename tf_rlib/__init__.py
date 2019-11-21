@@ -77,6 +77,7 @@ flags.DEFINE_string('bias_initializer', 'zeros', 'bias_initializer')
 flags.DEFINE_string('padding', 'same',
                     'same or valid, padding flag for conv, downsample')
 flags.DEFINE_string('conv_act', 'ReLU', 'activation function name')
+flags.DEFINE_string('interpolation', 'nearest', 'method for UpSampling layer')
 ## BN
 flags.DEFINE_string('conv_norm', 'BatchNormalization',
                     'normalization function name')

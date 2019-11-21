@@ -6,11 +6,11 @@ FLAGS = flags.FLAGS
 
 
 class UpSampling(tf.keras.layers.Layer):
-    def __init__(self, up_size=2, interpolation='nearest'):
+    def __init__(self, up_size=2):
         super(UpSampling, self).__init__()
         upsampling_op = layers.__dict__['UpSampling' + '{}D'.format(FLAGS.dim)]
         self.upsampling_op = upsampling_op(size=up_size,
-                                           interpolation=interpolation)
+                                           interpolation=FLAGS.interpolation)
 
     def call(self, x):
         x = self.upsampling_op(x)
