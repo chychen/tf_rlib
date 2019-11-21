@@ -4,6 +4,7 @@ import numpy as np
 from absl import flags, logging
 
 FLAGS = flags.FLAGS
+LOGGER = logging.get_absl_logger()
 
 
 def get_cifar10():
@@ -14,9 +15,11 @@ def get_cifar10():
     stddev = train_data_x.std(axis=(0, 1, 2))
     train_data_x = (train_data_x - mean) / stddev
     valid_data_x = (valid_data_x - mean) / stddev
+    #     train_data_x = train_data_x.astype(np.float16)
+    #     valid_data_x = valid_data_x.astype(np.float16)
     train_data_y = train_data[1]
     valid_data_y = valid_data[1]
-    logging.info('mean:{}, std:{}'.format(mean, stddev))
+    LOGGER.info('mean:{}, std:{}'.format(mean, stddev))
 
     @tf.function
     def augmentation(x, y, pad=4):
