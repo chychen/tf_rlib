@@ -79,7 +79,7 @@ class PyramidNet(models.Model):
         for _ in range(1, group_blocks):
             filters = self._get_block_filters()
             all_blocks.append(self.block(filters, strides=1))
-        return tf.keras.Sequential(all_blocks)
+        return self.sequential(all_blocks)
 
     def call(self, x):
         x = self.head(x)

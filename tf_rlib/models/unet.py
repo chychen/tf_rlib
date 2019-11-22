@@ -8,6 +8,7 @@ LOGGER = logging.get_absl_logger()
 import tensorflow as tf
 from tf_rlib import layers, blocks
 
+
 class UNet(models.Model):
     def __init__(self, init_filters=32, depth=4):
         super(UNet, self).__init__()
@@ -33,13 +34,13 @@ class UNet(models.Model):
                               use_act=True),
             blocks.ResBlock(self.init_filters)
         ]
-        return tf.keras.Sequential(all_blocks)
+        return self.sequential(all_blocks)
 
     def _get_down_blocks(self):
         group = []
         for i in range(self.depth):
             down_blocks = [blocks.DownBlock(self.init_filters * 2**(i + 1))]
-            group.append(tf.keras.Sequential(down_blocks))
+            group.append(self.sequential(down_blocks))
         return group
 
     def _get_up_blocks(self):
@@ -47,9 +48,9 @@ class UNet(models.Model):
         for i in range(self.depth):
             up_blocks = [
                 blocks.UpBlock(self.init_filters * 2**(self.depth - i - 1),
-                        with_concat=True)
+                               with_concat=True)
             ]
-            group.append(tf.keras.Sequential(up_blocks))
+            group.append(self.sequential(up_blocks))
         return group
 
     def call(self, x):
