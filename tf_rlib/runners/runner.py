@@ -51,6 +51,7 @@ class Runner:
                         dtype=tf.float32))
                 LOGGER.info('{} model contains {} trainable variables.'.format(
                     key, model.num_params))
+                model.summary(print_fn=LOGGER.info)
             if train_metrics is None or valid_metrics is None:
                 raise ValueError(
                     'metrics are required, Note: please use tf.keras.metrics.MeanTensor to compute the training loss, which is more efficient by avoiding redundant tain loss computing.'
@@ -93,6 +94,10 @@ class Runner:
             self.matrics_manager.update(metrics, MetricsManager.KEY_TRAIN)
 
         self.strategy.experimental_run_v2(train_fn, args=(x, y))
+
+    @tf.function
+    def test(self, x, y):
+        self.validate_step(x, y)
 
     def validate_step(self, x, y):
         """
@@ -148,11 +153,11 @@ class Runner:
                 train_pbar.reset()
                 valid_pbar.reset()
                 self.matrics_manager.reset()
-                # begin_epoch_callback
                 # train one epoch
                 for train_num_batch, (x_batch, y_batch) in enumerate(
                         self.train_dataset_dtb):
                     self.step = self.step + 1
+                    # train one step
                     if FLAGS.profile:
                         with profiler.Profiler(
                                 os.path.join(FLAGS.log_path, 'profile')):
@@ -166,6 +171,7 @@ class Runner:
                 if self.valid_dataset_dtb is not None:
                     for valid_num_batch, (x_batch, y_batch) in enumerate(
                             self.valid_dataset_dtb):
+                        # validate one step
                         self._validate_step(x_batch, y_batch)
                         valid_pbar.update(1)
                     if self.matrics_manager.is_better_state():
@@ -179,7 +185,8 @@ class Runner:
                     self._log_data(x_batch, training=False)
 
                 if self.epoch == 1:
-                    LOGGER.warn('time cost for first epoch: {} sec'.format(
+                    LOGGER.warn('')  # new line
+                    LOGGER.warn('Time cost for first epoch: {} sec'.format(
                         time.time() - first_e_timer))
                 if e_idx == 0:
                     train_num_batch = train_num_batch + 1
@@ -207,9 +214,9 @@ class Runner:
     def load_best(self):
         self.load(os.path.join(self.save_path, 'best'))
 
-    def log_scalar(self, key, value, step, training):
+    def log_scalar(self, tag, value, step, training):
         key = MetricsManager.KEY_TRAIN if training else MetricsManager.KEY_VALID
-        self.matrics_manager.add_scalar(key, value, step, key)
+        self.matrics_manager.add_scalar(tag, value, step, key)
 
     @property
     def best_state_record(self):
