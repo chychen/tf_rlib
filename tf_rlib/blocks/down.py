@@ -1,6 +1,7 @@
 import tensorflow as tf
 from tf_rlib import layers, blocks
 
+
 class DownBlock(blocks.Block):
     '''
     Pooling + resBlock

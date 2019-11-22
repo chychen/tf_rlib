@@ -1,11 +1,12 @@
 import tensorflow as tf
 from tf_rlib import layers, blocks
 
+
 class UpBlock(blocks.Block):
     '''
     UpSampling + Concat + ResBlock
     '''
-    def __init__(self, n_filters, up_size=2, with_concat=True):
+    def __init__(self, n_filters, with_concat, up_size=2):
         super(UpBlock, self).__init__(n_filters)
         self.with_concat = with_concat
         self.upsampling = layers.UpSampling(up_size=up_size)

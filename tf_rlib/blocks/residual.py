@@ -30,6 +30,8 @@ class ResBlock(blocks.Block):
                  preact=True,
                  last_norm=True,
                  shortcut_type='pad'):
+        """ NOTE: by default is a pyramidnet-style resblock
+        """
         super(ResBlock, self).__init__(filters, strides=strides)
         self.strides = strides
         self.last_norm = last_norm
