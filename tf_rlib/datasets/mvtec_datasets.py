@@ -167,11 +167,8 @@ class MVTecDS:
             return x, y
 
         train_ok_ds = tf.data.Dataset.from_tensor_slices((train_ok, train_ok))
-        test_ok_ds = tf.data.Dataset.from_tensor_slices((test_ok, test_ok))
-        # test_ok + test_ng
+        # validation set = test_ok + test_ng
         test_okng = np.concatenate([test_ok, test_ng], axis=0)
-        #         shuffle_idx = np.random.shuffle(np.arange(len(test_okng)))
-        #         test_okng = test_okng[shuffle_idx]
         test_okng_ds = tf.data.Dataset.from_tensor_slices(
             (test_okng, test_okng))
 
@@ -181,10 +178,8 @@ class MVTecDS:
                 train_ok.shape[0]).batch(
                     FLAGS.bs, drop_remainder=True).prefetch(
                         buffer_size=tf.data.experimental.AUTOTUNE)
-        test_ok_ds = test_ok_ds.cache().batch(
-            FLAGS.bs, drop_remainder=False).prefetch(
-                buffer_size=tf.data.experimental.AUTOTUNE)
         test_okng_ds = test_okng_ds.cache().batch(
             FLAGS.bs, drop_remainder=False).prefetch(
                 buffer_size=tf.data.experimental.AUTOTUNE)
-        return [train_ok_ds, test_ok_ds, test_okng_ds]
+
+        return [train_ok_ds, test_okng_ds]
