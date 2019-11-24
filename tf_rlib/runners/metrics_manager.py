@@ -12,6 +12,9 @@ class MetricsManager:
     KEY_VALID = 'valid'
     KEY_TEST = 'test'
 
+    TAG_METRICS = 'metrics/'
+    TAG_HPARAMS = 'hyper-perameters/'
+
     def __init__(self, best_state):
         self.message = ''
         self.keys = [
@@ -49,9 +52,9 @@ class MetricsManager:
     def append_message(self, msg):
         self.message = self.message + msg
 
-    def add_scalar(self, tag, value, epoch, key):
+    def add_scalar(self, name, value, epoch, key, tag=''):
         with self.boards_writer[key].as_default():
-            tf.summary.scalar(tag, value, step=epoch)
+            tf.summary.scalar(tag + name, value, step=epoch)
 
     def show_message(self, epoch, tensorboard=True):
         self.append_message('\nepoch: {}  '.format(epoch))
@@ -65,7 +68,8 @@ class MetricsManager:
                 tmp_msg = tmp_msg + '{}_{}: {:.4f}  '.format(key, k, v.numpy())
                 if tensorboard:
                     with self.boards_writer[key].as_default():
-                        tf.summary.scalar(self.metrics[key][k].name,
+                        tf.summary.scalar(MetricsManager.TAG_METRICS +
+                                          self.metrics[key][k].name,
                                           v,
                                           step=epoch)
         if self.train_num_batch is None or self.valid_num_batch is None:
@@ -77,14 +81,19 @@ class MetricsManager:
         self.append_message(tmp_msg)
         LOGGER.info(self.message)
         if tensorboard:
-            self.add_scalar('best_record', self.best_record, epoch,
-                            MetricsManager.KEY_VALID)
-            self.add_scalar('img_p_sec', img_p_sec, epoch,
-                            MetricsManager.KEY_VALID)
+            self.add_scalar(MetricsManager.TAG_METRICS + 'best_record',
+                            self.best_record, epoch, MetricsManager.KEY_VALID)
+            self.add_scalar(MetricsManager.TAG_HPARAMS + 'img_p_sec',
+                            img_p_sec, epoch, MetricsManager.KEY_VALID)
 
-    def show_image(self, x, key, epoch):
+    def show_image(self, x, key, epoch, name='image'):
         with self.boards_writer[key].as_default():
-            tf.summary.image('image', x, step=epoch, max_outputs=3)
+            num_vis = 3 if x.shape[0] > 3 else x.shape[0]
+            for i in range(num_vis):
+                tf.summary.image(str(i) + '/' + name,
+                                 x[i:i + 1],
+                                 step=epoch,
+                                 max_outputs=1)
 
     def update(self, data, key):
         """
@@ -145,7 +154,7 @@ class MetricsManager:
     def _state_policy_mapper(self, state):
         if state == 'acc' or state == 'precision' or state == 'recall' or state == 'f1':
             return max, float('-inf')
-        if state == 'mae' or state == 'mse' or state == 'l1' or state == 'l2':
+        if state == 'mae' or state == 'mse' or state == 'l1' or state == 'l2' or state == 'loss':
             return min, float('inf')
         if state == 'dice_coef':
             return max, float('-inf')

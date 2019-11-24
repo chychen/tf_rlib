@@ -18,11 +18,12 @@ class Model(tf.keras.Model):
 
     def sequential(self, blocks, register=True):
         if register:  # avoid gc clean up
-            self.register.append(blocks)
+            for bk in blocks:
+                setattr(self, bk.name, bk)
 
         def seq_fn(x):
             for bk in blocks:
-                x = bk(x)
+                x = getattr(self, bk.name)(x)
             return x
 
         return seq_fn

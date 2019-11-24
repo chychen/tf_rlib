@@ -6,9 +6,8 @@ from tqdm.auto import tqdm
 from absl import flags, logging
 import tensorflow as tf
 from tensorflow.python.eager import profiler
-import tf_rlib
 from tf_rlib.runners import MetricsManager
-from tf_rlib import utils
+from tf_rlib import utils, metrics
 
 FLAGS = flags.FLAGS
 LOGGER = logging.get_absl_logger()
@@ -36,6 +35,7 @@ class Runner:
         self.save_path = FLAGS.save_path
         self.best_state = best_state
         self.matrics_manager = MetricsManager(best_state)
+        self.models_outs_shapes = dict()
         with self.strategy.scope():
             self.models, train_metrics, valid_metrics = self.init()
             self.train_dataset_dtb = self.strategy.experimental_distribute_dataset(
@@ -45,10 +45,14 @@ class Runner:
 
             # weights init in first call()
             for key, model in self.models.items():
-                _ = model(
+                model_outs = model(
                     tf.keras.Input(
                         shape=train_dataset.element_spec[0].shape[1:],
                         dtype=tf.float32))
+                if type(model_outs) != tuple:
+                    model_outs = tuple(model_outs)
+                outs_shapes = tuple((out.shape for out in model_outs))
+                self.models_outs_shapes[key] = outs_shapes
                 LOGGER.info('{} model contains {} trainable variables.'.format(
                     key, model.num_params))
                 model.summary(print_fn=LOGGER.info)
@@ -65,13 +69,13 @@ class Runner:
                                                      MetricsManager.KEY_VALID)
         if valid_metrics is not None:
             for k, v in valid_metrics.items():
-                if v.__class__.__name__ in tf.keras.metrics.__dict__:
+                if v.__class__.__name__ in metrics.__dict__:
                     self.matrics_manager.add_metrics(
-                        k, tf.keras.metrics.__dict__[v.__class__.__name__](
+                        k, metrics.__dict__[v.__class__.__name__](
                             MetricsManager.KEY_TEST), MetricsManager.KEY_TEST)
                 else:
                     self.matrics_manager.add_metrics(
-                        k, tf_rlib.metrics.__dict__[v.__class__.__name__](
+                        k, tf.keras.metrics.__dict__[v.__class__.__name__](
                             MetricsManager.KEY_TEST), MetricsManager.KEY_TEST)
 
     def init(self):
@@ -165,7 +169,7 @@ class Runner:
                     else:
                         self._train_step(x_batch, y_batch)
                     train_pbar.update(1)
-                self._log_data(x_batch, training=True)
+                self._log_data(x_batch, y_batch, training=True)
 
                 # validate one epoch
                 if self.valid_dataset_dtb is not None:
@@ -182,7 +186,7 @@ class Runner:
                             self.best_state:
                             self.matrics_manager.best_record
                         })
-                    self._log_data(x_batch, training=False)
+                    self._log_data(x_batch, y_batch, training=False)
 
                 if self.epoch == 1:
                     LOGGER.warn('')  # new line
@@ -214,9 +218,13 @@ class Runner:
     def load_best(self):
         self.load(os.path.join(self.save_path, 'best'))
 
-    def log_scalar(self, tag, value, step, training):
+    def log_scalar(self, name, value, step, training):
         key = MetricsManager.KEY_TRAIN if training else MetricsManager.KEY_VALID
-        self.matrics_manager.add_scalar(tag, value, step, key)
+        self.matrics_manager.add_scalar(name,
+                                        value,
+                                        step,
+                                        key,
+                                        tag=MetricsManager.TAG_HPARAMS)
 
     @property
     def best_state_record(self):
@@ -231,13 +239,35 @@ class Runner:
                 num_data += data.shape[0]
         return num_batch, num_data
 
-    def _log_data(self, x_batch, training):
+    def _log_data(self, x_batch, y_batch, training):
         key = MetricsManager.KEY_TRAIN if training else MetricsManager.KEY_VALID
-        if FLAGS.dim == 2:
+        # log images
+        # vis x, y if images
+        names = ['x', 'y']
+        batches = [x_batch, y_batch]
+        # vis model outputs if they are images!
+        for model_key, model in self.models.items():
+            # sometime model output more than one result.
+            out_shapes = self.models_outs_shapes[model_key]
+            valid_out_idx = []
+            for i, shape in enumerate(out_shapes):
+                if len(shape) == 4 and shape[-1] <= 4:
+                    valid_out_idx.append(i)
+            # only inference model when necessary
+            if len(valid_out_idx) > 0:
+                model_out = model(x_batch)
+                for idx in valid_out_idx:
+                    names.append(model_key + '_' + str(idx))
+                    batches.append(model_out[idx])
+        # vis
+        for name, batch in zip(names, batches):
             if self.strategy.num_replicas_in_sync == 1:
-                x_batch_local = x_batch
+                batch_local = batch
             else:
-                x_batch_local = x_batch.values[0]
-            self.matrics_manager.show_image(x_batch_local,
-                                            key,
-                                            epoch=self.epoch)
+                batch_local = batch.values[0]
+            if len(batch_local.shape
+                   ) == 4 and batch_local.shape[-1] <= 4:  # [b, w, h, c], c<4
+                self.matrics_manager.show_image(batch_local,
+                                                key,
+                                                epoch=self.epoch,
+                                                name=name)
