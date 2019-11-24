@@ -148,13 +148,12 @@ class MVTecDS:
         LOGGER.info('test_gt shape: {}, dtype: {}'.format(
             test_gt.shape, test_gt.dtype))
 
-        # Normalize
-        mean = train_ok.mean(axis=(0, 1, 2))
-        stddev = train_ok.std(axis=(0, 1, 2))
-        LOGGER.info('mean:{}, std:{}'.format(mean, stddev))
-        train_ok = (train_ok - mean) / stddev
-        test_ok = (test_ok - mean) / stddev
-        test_ng = (test_ng - mean) / stddev
+        LOGGER.info('Normalize to [-1, 1]')
+        min_ = np.amin(train_ok)
+        range_ = np.amax(train_ok) - min_
+        train_ok = (train_ok - min_) / range_ * 2.0 - 1.0
+        test_ok = (test_ok - min_) / range_ * 2.0 - 1.0
+        test_ng = (test_ng - min_) / range_ * 2.0 - 1.0
 
         @tf.function
         def augmentation(x,
@@ -164,7 +163,7 @@ class MVTecDS:
                                                  target_size[1] + pad * 2)
             x = tf.image.random_crop(x, target_size + (3, ))
             x = tf.image.random_flip_left_right(x)
-            return x, y
+            return x, x
 
         train_ok_ds = tf.data.Dataset.from_tensor_slices((train_ok, train_ok))
         # validation set = test_ok + test_ng
