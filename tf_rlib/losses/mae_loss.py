@@ -15,7 +15,7 @@ class MAELoss(LossFunctionWrapper):
     """ in tf2.0.0, tf.keras.losses.MAE only reduce_mean on axis=-1, 
     this class MAELoss reduce_mean on axis=[1,...,rank-1] instead.
     """
-    def __init__(self, name='mse_loss'):
+    def __init__(self, name='mae_loss'):
         super(MAELoss, self).__init__(mae_loss,
                                       name=name,
                                       reduction=tf.keras.losses.Reduction.NONE)

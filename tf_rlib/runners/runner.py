@@ -34,7 +34,7 @@ class Runner:
         self.step = 0
         self.save_path = FLAGS.save_path
         self.best_state = best_state
-        self.matrics_manager = MetricsManager(best_state)
+        self.metrics_manager = MetricsManager(best_state)
         self.models_outs_shapes = dict()
         with self.strategy.scope():
             self.models, train_metrics, valid_metrics = self.init()
@@ -62,19 +62,19 @@ class Runner:
                 )
             else:
                 for k, v in train_metrics.items():
-                    self.matrics_manager.add_metrics(k, v,
+                    self.metrics_manager.add_metrics(k, v,
                                                      MetricsManager.KEY_TRAIN)
                 for k, v in valid_metrics.items():
-                    self.matrics_manager.add_metrics(k, v,
+                    self.metrics_manager.add_metrics(k, v,
                                                      MetricsManager.KEY_VALID)
         if valid_metrics is not None:
             for k, v in valid_metrics.items():
                 if v.__class__.__name__ in metrics.__dict__:
-                    self.matrics_manager.add_metrics(
+                    self.metrics_manager.add_metrics(
                         k, metrics.__dict__[v.__class__.__name__](
                             MetricsManager.KEY_TEST), MetricsManager.KEY_TEST)
                 else:
-                    self.matrics_manager.add_metrics(
+                    self.metrics_manager.add_metrics(
                         k, tf.keras.metrics.__dict__[v.__class__.__name__](
                             MetricsManager.KEY_TEST), MetricsManager.KEY_TEST)
 
@@ -95,7 +95,7 @@ class Runner:
     def _train_step(self, x, y):
         def train_fn(x, y):
             metrics = self.train_step(x, y)
-            self.matrics_manager.update(metrics, MetricsManager.KEY_TRAIN)
+            self.metrics_manager.update(metrics, MetricsManager.KEY_TRAIN)
 
         self.strategy.experimental_run_v2(train_fn, args=(x, y))
 
@@ -117,7 +117,7 @@ class Runner:
     def _validate_step(self, x, y):
         def valid_fn(x, y):
             metrics = self.validate_step(x, y)
-            self.matrics_manager.update(metrics, MetricsManager.KEY_VALID)
+            self.metrics_manager.update(metrics, MetricsManager.KEY_VALID)
 
         self.strategy.experimental_run_v2(valid_fn, args=(x, y))
 
@@ -132,9 +132,9 @@ class Runner:
             dataset = self.valid_dataset
         for _, (x_batch, y_batch) in enumerate(dataset):
             metrics = self.validate_step(x_batch, y_batch)
-            self.matrics_manager.update(metrics, MetricsManager.KEY_TEST)
+            self.metrics_manager.update(metrics, MetricsManager.KEY_TEST)
 
-        return self.matrics_manager.get_result(keys=[MetricsManager.KEY_TEST])
+        return self.metrics_manager.get_result(keys=[MetricsManager.KEY_TEST])
 
     def begin_fit_callback(self, lr):
         pass
@@ -156,7 +156,7 @@ class Runner:
                 # progress bars
                 train_pbar.reset()
                 valid_pbar.reset()
-                self.matrics_manager.reset()
+                self.metrics_manager.reset()
                 # train one epoch
                 for train_num_batch, (x_batch, y_batch) in enumerate(
                         self.train_dataset_dtb):
@@ -178,13 +178,13 @@ class Runner:
                         # validate one step
                         self._validate_step(x_batch, y_batch)
                         valid_pbar.update(1)
-                    if self.matrics_manager.is_better_state():
+                    if self.metrics_manager.is_better_state():
                         self.save_best()
                         valid_pbar.set_postfix({
                             'best epoch':
                             self.epoch,
                             self.best_state:
-                            self.matrics_manager.best_record
+                            self.metrics_manager.best_record
                         })
                     self._log_data(x_batch, y_batch, training=False)
 
@@ -195,14 +195,14 @@ class Runner:
                 if e_idx == 0:
                     train_num_batch = train_num_batch + 1
                     valid_num_batch = valid_num_batch + 1
-                    self.matrics_manager.set_num_batch(train_num_batch,
+                    self.metrics_manager.set_num_batch(train_num_batch,
                                                        valid_num_batch)
                     train_pbar.total = train_num_batch
                     valid_pbar.total = valid_num_batch
 
                 # logging
-                self.matrics_manager.show_message(self.epoch)
-            self.matrics_manager.register_hparams()
+                self.metrics_manager.show_message(self.epoch)
+            self.metrics_manager.register_hparams()
 
     def save(self, path):
         for key, model in self.models.items():
@@ -220,7 +220,7 @@ class Runner:
 
     def log_scalar(self, name, value, step, training):
         key = MetricsManager.KEY_TRAIN if training else MetricsManager.KEY_VALID
-        self.matrics_manager.add_scalar(name,
+        self.metrics_manager.add_scalar(name,
                                         value,
                                         step,
                                         key,
@@ -228,7 +228,7 @@ class Runner:
 
     @property
     def best_state_record(self):
-        return self.matrics_manager.best_record
+        return self.metrics_manager.best_record
 
     def _get_size(self, dataset):
         num_batch = 0
@@ -267,7 +267,7 @@ class Runner:
                 batch_local = batch.values[0]
             if len(batch_local.shape
                    ) == 4 and batch_local.shape[-1] <= 4:  # [b, w, h, c], c<4
-                self.matrics_manager.show_image(batch_local,
+                self.metrics_manager.show_image(batch_local,
                                                 key,
                                                 epoch=self.epoch,
                                                 name=name)
