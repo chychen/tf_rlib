@@ -15,7 +15,7 @@ def shortcut_padding(out, x, downsample):
         padding = [
             [0, 0],
         ] * (FLAGS.dim + 1) + [
-            [0, residual_channel - shortcut_channel],
+            [0, tf.abs(residual_channel - shortcut_channel)],
         ]
         shortcut = tf.pad(shortcut, padding, "CONSTANT")
     return shortcut
@@ -29,7 +29,9 @@ class ResBlock(blocks.Block):
                  strides=1,
                  preact=True,
                  last_norm=True,
-                 shortcut_type='pad'):
+                 shortcut_type='project'):
+        """ NOTE: by default is a pyramidnet-style resblock
+        """
         super(ResBlock, self).__init__(filters, strides=strides)
         self.strides = strides
         self.last_norm = last_norm
@@ -84,7 +86,7 @@ class ResBottleneck(blocks.Block):
                  strides=1,
                  preact=True,
                  last_norm=True,
-                 shortcut_type='pad'):
+                 shortcut_type='project'):
         super(ResBottleneck, self).__init__(filters, strides=strides)
         self.strides = strides
         self.last_norm = last_norm

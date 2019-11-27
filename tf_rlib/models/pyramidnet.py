@@ -75,11 +75,13 @@ class PyramidNet(models.Model):
     def _build_pyramid_group(self, group_blocks, strides):
         all_blocks = []
         filters = self._get_block_filters()
-        all_blocks.append(self.block(filters, strides=strides))
+        all_blocks.append(
+            self.block(filters, strides=strides, shortcut_type='pad'))
         for _ in range(1, group_blocks):
             filters = self._get_block_filters()
-            all_blocks.append(self.block(filters, strides=1))
-        return tf.keras.Sequential(all_blocks)
+            all_blocks.append(
+                self.block(filters, strides=1, shortcut_type='pad'))
+        return self.sequential(all_blocks)
 
     def call(self, x):
         x = self.head(x)

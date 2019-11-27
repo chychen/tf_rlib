@@ -6,9 +6,8 @@ from tqdm.auto import tqdm
 from absl import flags, logging
 import tensorflow as tf
 from tensorflow.python.eager import profiler
-import tf_rlib
 from tf_rlib.runners import MetricsManager
-from tf_rlib import utils
+from tf_rlib import utils, metrics
 
 FLAGS = flags.FLAGS
 LOGGER = logging.get_absl_logger()
@@ -35,7 +34,8 @@ class Runner:
         self.step = 0
         self.save_path = FLAGS.save_path
         self.best_state = best_state
-        self.matrics_manager = MetricsManager(best_state)
+        self.metrics_manager = MetricsManager(best_state)
+        self.models_outs_shapes = dict()
         with self.strategy.scope():
             self.models, train_metrics, valid_metrics = self.init()
             self.train_dataset_dtb = self.strategy.experimental_distribute_dataset(
@@ -45,32 +45,37 @@ class Runner:
 
             # weights init in first call()
             for key, model in self.models.items():
-                _ = model(
+                model_outs = model(
                     tf.keras.Input(
                         shape=train_dataset.element_spec[0].shape[1:],
                         dtype=tf.float32))
+                if type(model_outs) != tuple:
+                    model_outs = tuple(model_outs)
+                outs_shapes = tuple((out.shape for out in model_outs))
+                self.models_outs_shapes[key] = outs_shapes
                 LOGGER.info('{} model contains {} trainable variables.'.format(
                     key, model.num_params))
+                model.summary(print_fn=LOGGER.info)
             if train_metrics is None or valid_metrics is None:
                 raise ValueError(
                     'metrics are required, Note: please use tf.keras.metrics.MeanTensor to compute the training loss, which is more efficient by avoiding redundant tain loss computing.'
                 )
             else:
                 for k, v in train_metrics.items():
-                    self.matrics_manager.add_metrics(k, v,
+                    self.metrics_manager.add_metrics(k, v,
                                                      MetricsManager.KEY_TRAIN)
                 for k, v in valid_metrics.items():
-                    self.matrics_manager.add_metrics(k, v,
+                    self.metrics_manager.add_metrics(k, v,
                                                      MetricsManager.KEY_VALID)
         if valid_metrics is not None:
             for k, v in valid_metrics.items():
-                if v.__class__.__name__ in tf.keras.metrics.__dict__:
-                    self.matrics_manager.add_metrics(
-                        k, tf.keras.metrics.__dict__[v.__class__.__name__](
+                if v.__class__.__name__ in metrics.__dict__:
+                    self.metrics_manager.add_metrics(
+                        k, metrics.__dict__[v.__class__.__name__](
                             MetricsManager.KEY_TEST), MetricsManager.KEY_TEST)
                 else:
-                    self.matrics_manager.add_metrics(
-                        k, tf_rlib.metrics.__dict__[v.__class__.__name__](
+                    self.metrics_manager.add_metrics(
+                        k, tf.keras.metrics.__dict__[v.__class__.__name__](
                             MetricsManager.KEY_TEST), MetricsManager.KEY_TEST)
 
     def init(self):
@@ -90,9 +95,13 @@ class Runner:
     def _train_step(self, x, y):
         def train_fn(x, y):
             metrics = self.train_step(x, y)
-            self.matrics_manager.update(metrics, MetricsManager.KEY_TRAIN)
+            self.metrics_manager.update(metrics, MetricsManager.KEY_TRAIN)
 
         self.strategy.experimental_run_v2(train_fn, args=(x, y))
+
+    @tf.function
+    def test(self, x, y):
+        self.validate_step(x, y)
 
     def validate_step(self, x, y):
         """
@@ -108,7 +117,7 @@ class Runner:
     def _validate_step(self, x, y):
         def valid_fn(x, y):
             metrics = self.validate_step(x, y)
-            self.matrics_manager.update(metrics, MetricsManager.KEY_VALID)
+            self.metrics_manager.update(metrics, MetricsManager.KEY_VALID)
 
         self.strategy.experimental_run_v2(valid_fn, args=(x, y))
 
@@ -123,9 +132,9 @@ class Runner:
             dataset = self.valid_dataset
         for _, (x_batch, y_batch) in enumerate(dataset):
             metrics = self.validate_step(x_batch, y_batch)
-            self.matrics_manager.update(metrics, MetricsManager.KEY_TEST)
+            self.metrics_manager.update(metrics, MetricsManager.KEY_TEST)
 
-        return self.matrics_manager.get_result(keys=[MetricsManager.KEY_TEST])
+        return self.metrics_manager.get_result(keys=[MetricsManager.KEY_TEST])
 
     def begin_fit_callback(self, lr):
         pass
@@ -147,12 +156,12 @@ class Runner:
                 # progress bars
                 train_pbar.reset()
                 valid_pbar.reset()
-                self.matrics_manager.reset()
-                # begin_epoch_callback
+                self.metrics_manager.reset()
                 # train one epoch
                 for train_num_batch, (x_batch, y_batch) in enumerate(
                         self.train_dataset_dtb):
                     self.step = self.step + 1
+                    # train one step
                     if FLAGS.profile:
                         with profiler.Profiler(
                                 os.path.join(FLAGS.log_path, 'profile')):
@@ -160,38 +169,40 @@ class Runner:
                     else:
                         self._train_step(x_batch, y_batch)
                     train_pbar.update(1)
-                self._log_data(x_batch, training=True)
+                self._log_data(x_batch, y_batch, training=True)
 
                 # validate one epoch
                 if self.valid_dataset_dtb is not None:
                     for valid_num_batch, (x_batch, y_batch) in enumerate(
                             self.valid_dataset_dtb):
+                        # validate one step
                         self._validate_step(x_batch, y_batch)
                         valid_pbar.update(1)
-                    if self.matrics_manager.is_better_state():
+                    if self.metrics_manager.is_better_state():
                         self.save_best()
                         valid_pbar.set_postfix({
                             'best epoch':
                             self.epoch,
                             self.best_state:
-                            self.matrics_manager.best_record
+                            self.metrics_manager.best_record
                         })
-                    self._log_data(x_batch, training=False)
+                    self._log_data(x_batch, y_batch, training=False)
 
                 if self.epoch == 1:
-                    LOGGER.warn('time cost for first epoch: {} sec'.format(
+                    LOGGER.warn('')  # new line
+                    LOGGER.warn('Time cost for first epoch: {} sec'.format(
                         time.time() - first_e_timer))
                 if e_idx == 0:
                     train_num_batch = train_num_batch + 1
                     valid_num_batch = valid_num_batch + 1
-                    self.matrics_manager.set_num_batch(train_num_batch,
+                    self.metrics_manager.set_num_batch(train_num_batch,
                                                        valid_num_batch)
                     train_pbar.total = train_num_batch
                     valid_pbar.total = valid_num_batch
 
                 # logging
-                self.matrics_manager.show_message(self.epoch)
-            self.matrics_manager.register_hparams()
+                self.metrics_manager.show_message(self.epoch)
+            self.metrics_manager.register_hparams()
 
     def save(self, path):
         for key, model in self.models.items():
@@ -207,13 +218,17 @@ class Runner:
     def load_best(self):
         self.load(os.path.join(self.save_path, 'best'))
 
-    def log_scalar(self, key, value, step, training):
+    def log_scalar(self, name, value, step, training):
         key = MetricsManager.KEY_TRAIN if training else MetricsManager.KEY_VALID
-        self.matrics_manager.add_scalar(key, value, step, key)
+        self.metrics_manager.add_scalar(name,
+                                        value,
+                                        step,
+                                        key,
+                                        tag=MetricsManager.TAG_HPARAMS)
 
     @property
     def best_state_record(self):
-        return self.matrics_manager.best_record
+        return self.metrics_manager.best_record
 
     def _get_size(self, dataset):
         num_batch = 0
@@ -224,13 +239,35 @@ class Runner:
                 num_data += data.shape[0]
         return num_batch, num_data
 
-    def _log_data(self, x_batch, training):
+    def _log_data(self, x_batch, y_batch, training):
         key = MetricsManager.KEY_TRAIN if training else MetricsManager.KEY_VALID
-        if FLAGS.dim == 2:
+        # log images
+        # vis x, y if images
+        names = ['x', 'y']
+        batches = [x_batch, y_batch]
+        # vis model outputs if they are images!
+        for model_key, model in self.models.items():
+            # sometime model output more than one result.
+            out_shapes = self.models_outs_shapes[model_key]
+            valid_out_idx = []
+            for i, shape in enumerate(out_shapes):
+                if len(shape) == 4 and shape[-1] <= 4:
+                    valid_out_idx.append(i)
+            # only inference model when necessary
+            if len(valid_out_idx) > 0:
+                model_out = model(x_batch)
+                for idx in valid_out_idx:
+                    names.append(model_key + '_' + str(idx))
+                    batches.append(model_out[idx])
+        # vis
+        for name, batch in zip(names, batches):
             if self.strategy.num_replicas_in_sync == 1:
-                x_batch_local = x_batch
+                batch_local = batch
             else:
-                x_batch_local = x_batch.values[0]
-            self.matrics_manager.show_image(x_batch_local,
-                                            key,
-                                            epoch=self.epoch)
+                batch_local = batch.values[0]
+            if len(batch_local.shape
+                   ) == 4 and batch_local.shape[-1] <= 4:  # [b, w, h, c], c<4
+                self.metrics_manager.show_image(batch_local,
+                                                key,
+                                                epoch=self.epoch,
+                                                name=name)

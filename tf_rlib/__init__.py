@@ -7,7 +7,7 @@ import tensorflow as tf
 from absl import app
 from absl import flags, logging
 from tf_rlib.utils.ipython import isnotebook
-from tf_rlib import blocks, datasets, layers, models, research, runners, utils
+from tf_rlib import blocks, datasets, layers, models, research, runners, utils, metrics, losses
 from tf_rlib.utils import purge_logs, init_tf_rlib
 
 # envs
@@ -28,10 +28,7 @@ flags.DEFINE_bool('profile', False, 'use TensorBoard profiler?')
 flags.DEFINE_bool('purge_logs', False, 'remove all logs')
 flags.DEFINE_string('current_time', current_time,
                     'timezone: Asia/Taipei, strftime: %Y%m%d-%H%M%S')
-# flags.DEFINE_integer('port', '6006', 'port for Tensorbaord')
-flags.DEFINE_string(
-    'local_path', '/results',
-    'tmp folder')  # NOTE: save in local is faster than mounted location
+flags.DEFINE_string('local_path', '/results', 'tmp folder')
 flags.DEFINE_string('log_path', None, 'path for logging files')
 flags.DEFINE_string('path_postfix', '', 'postfix after log_path')
 flags.DEFINE_string('save_path', None, 'path for ckpt files')
@@ -99,6 +96,23 @@ flags.DEFINE_bool('bottleneck', None,
                   'True for ResBottleneck, False for ResBlock')
 flags.DEFINE_string('filters_mode', 'small',
                     'small for cifar10, large for imagenet')
+
+#############################
+########## RUNNERS ##########
+#############################
+
+# General Settings (default is None, set value within each runner)
+
+# ClassificationRunner
+
+# SegmentationRunner
+
+# ADAERunner (Anomaly Detection AutoEncoder Runner)
+flags.DEFINE_integer('latent_dim', None, 'dims of latent space')
+flags.DEFINE_string(
+    'loss_fn', None,
+    'go check recommended loss functions in runner API, such as tf.rlib.runners.ADAERunner.LOSSES_POOL'
+)
 
 #############################
 ########### RLIBS ###########
