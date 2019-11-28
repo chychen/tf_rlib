@@ -50,7 +50,7 @@ class Runner:
                         shape=train_dataset.element_spec[0].shape[1:],
                         dtype=tf.float32))
                 if type(model_outs) != tuple:
-                    model_outs = tuple(model_outs)
+                    model_outs = tuple((model_outs, ))
                 outs_shapes = tuple((out.shape for out in model_outs))
                 self.models_outs_shapes[key] = outs_shapes
                 LOGGER.info('{} model contains {} trainable variables.'.format(

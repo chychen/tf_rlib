@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tf_rlib.models import PyramidNet
 from tf_rlib.runners import runner
-from tf_rlib.datasets import get_cifar10
+from tf_rlib.datasets import Cifar10
 from absl import flags
 from absl import logging
 import numpy as np
@@ -28,7 +28,7 @@ class ClassificationPyramidNet272Cifar10(runner.Runner):
         FLAGS.model_alpha = 200
         FLAGS.bottleneck = True
         # cifar10
-        train_dataset, valid_dataset = get_cifar10()
+        train_dataset, valid_dataset = Cifar10().get_data()
         super(ClassificationPyramidNet272Cifar10,
               self).__init__(train_dataset,
                              valid_dataset=valid_dataset,

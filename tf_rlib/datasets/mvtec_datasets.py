@@ -6,12 +6,13 @@ import pandas as pd
 from tqdm.auto import tqdm
 from absl import flags, logging
 from PIL import Image
+from tf_rlib import datasets
 
 FLAGS = flags.FLAGS
 LOGGER = logging.get_absl_logger()
 
 
-class MVTecDS:
+class MVTecDS(datasets.Dataset):
     CSV_NAME = 'all.csv'
     TRAIN_OK_NAME = 'train_ok.npy'
     TEST_OK_NAME = 'test_ok.npy'
@@ -26,6 +27,7 @@ class MVTecDS:
         @Params
             data_path(str): data path
         """
+        super(MVTecDS, self).__init__()
         self.data_path = data_path
         self.df = self.get_df(force_update)
 

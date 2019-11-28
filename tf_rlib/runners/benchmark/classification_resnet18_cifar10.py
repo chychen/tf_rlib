@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tf_rlib.models import ResNet_Cifar10
 from tf_rlib.runners import runner
-from tf_rlib.datasets import get_cifar10
+from tf_rlib.datasets import Cifar10
 from absl import flags
 from absl import logging
 import numpy as np
@@ -23,11 +23,10 @@ class ClassificationResNet18Cifar10(runner.Runner):
         FLAGS.gpus = '0'
         FLAGS.exp_name = ClassificationResNet18Cifar10.__name__
         # cifar10
-        train_dataset, valid_dataset = get_cifar10()
+        train_dataset, valid_dataset = Cifar10().get_data()
         # resnet-18
         FLAGS.l2 = 1e-4
         FLAGS.depth = 18
-        train_dataset, valid_dataset = get_cifar10()
         super(ClassificationResNet18Cifar10,
               self).__init__(train_dataset,
                              valid_dataset=valid_dataset,

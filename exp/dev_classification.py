@@ -13,7 +13,7 @@ FLAGS = flags.FLAGS
 
 
 def main():
-    datasets = tf_rlib.datasets.get_cifar10()
+    datasets = tf_rlib.datasets.Cifar10().get_data()
     runner = ClassificationRunner(*datasets)
     runner.fit(FLAGS.epochs, FLAGS.lr)
 
