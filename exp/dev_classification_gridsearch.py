@@ -16,7 +16,7 @@ def main():
     FLAGS.bottleneck = False
     tf_rlib.utils.set_logging('INFO')
     hpt = HParamTuner(ClassificationRunner, ['0', '1'],
-                      tf_rlib.datasets.get_cifar10)
+                      tf_rlib.datasets.Cifar10().get_data())
     hpt(epochs=[300], xla=[True, False, True, False, True, False])
 
 
@@ -28,7 +28,7 @@ def main():
 #     FLAGS.model_alpha=200
 #     FLAGS.bottleneck=True
 #     hpt = HParamTuner(ClassificationRunner, ['0,1,2,3'],
-#                       tf_rlib.datasets.get_cifar10)
+#                       tf_rlib.datasets.Cifar10().get_data())
 #     hpt(xla=[True, False, True, False])
 
 if __name__ == '__main__':

@@ -2,45 +2,54 @@ import tensorflow as tf
 from tensorflow.keras.utils import to_categorical
 import numpy as np
 from absl import flags, logging
+from tf_rlib import datasets
 
 FLAGS = flags.FLAGS
 LOGGER = logging.get_absl_logger()
 
 
-def get_cifar10():
-    train_data, valid_data = tf.keras.datasets.cifar10.load_data()
-    train_data_x = train_data[0].astype(np.float32)
-    valid_data_x = valid_data[0].astype(np.float32)
-    mean = train_data_x.mean(axis=(0, 1, 2))
-    stddev = train_data_x.std(axis=(0, 1, 2))
-    train_data_x = (train_data_x - mean) / stddev
-    valid_data_x = (valid_data_x - mean) / stddev
-    #     train_data_x = train_data_x.astype(np.float16)
-    #     valid_data_x = valid_data_x.astype(np.float16)
-    train_data_y = train_data[1]
-    valid_data_y = valid_data[1]
-    LOGGER.info('mean:{}, std:{}'.format(mean, stddev))
+class Cifar10(datasets.Dataset):
+    def __init__(self):
+        super(Cifar10, self).__init__()
+        self.tf_dsets = self._get_dsets()
 
-    @tf.function
-    def augmentation(x, y, pad=4):
-        x = tf.image.resize_with_crop_or_pad(x, 32 + pad * 2, 32 + pad * 2)
-        x = tf.image.random_crop(x, [32, 32, 3])
-        x = tf.image.random_flip_left_right(x)
-        return x, y
+    def get_data(self):
+        return self.tf_dsets
 
-    train_dataset = tf.data.Dataset.from_tensor_slices(
-        (train_data_x, train_data_y))
-    valid_dataset = tf.data.Dataset.from_tensor_slices(
-        (valid_data_x, valid_data_y))
-    train_dataset = train_dataset.map(
-        augmentation,
-        num_parallel_calls=tf.data.experimental.AUTOTUNE).cache().shuffle(
-            50000).batch(FLAGS.bs, drop_remainder=True).prefetch(
+    def _get_dsets(self):
+        train_data, valid_data = tf.keras.datasets.cifar10.load_data()
+        train_data_x = train_data[0].astype(np.float32)
+        valid_data_x = valid_data[0].astype(np.float32)
+        mean = train_data_x.mean(axis=(0, 1, 2))
+        stddev = train_data_x.std(axis=(0, 1, 2))
+        train_data_x = (train_data_x - mean) / stddev
+        valid_data_x = (valid_data_x - mean) / stddev
+        #     train_data_x = train_data_x.astype(np.float16)
+        #     valid_data_x = valid_data_x.astype(np.float16)
+        train_data_y = train_data[1]
+        valid_data_y = valid_data[1]
+        LOGGER.info('mean:{}, std:{}'.format(mean, stddev))
+
+        @tf.function
+        def augmentation(x, y, pad=4):
+            x = tf.image.resize_with_crop_or_pad(x, 32 + pad * 2, 32 + pad * 2)
+            x = tf.image.random_crop(x, [32, 32, 3])
+            x = tf.image.random_flip_left_right(x)
+            return x, y
+
+        train_dataset = tf.data.Dataset.from_tensor_slices(
+            (train_data_x, train_data_y))
+        valid_dataset = tf.data.Dataset.from_tensor_slices(
+            (valid_data_x, valid_data_y))
+        train_dataset = train_dataset.map(
+            augmentation,
+            num_parallel_calls=tf.data.experimental.AUTOTUNE).cache().shuffle(
+                50000).batch(FLAGS.bs, drop_remainder=True).prefetch(
+                    buffer_size=tf.data.experimental.AUTOTUNE)
+        valid_dataset = valid_dataset.cache().batch(
+            FLAGS.bs, drop_remainder=False).prefetch(
                 buffer_size=tf.data.experimental.AUTOTUNE)
-    valid_dataset = valid_dataset.cache().batch(
-        FLAGS.bs, drop_remainder=False).prefetch(
-            buffer_size=tf.data.experimental.AUTOTUNE)
-    return [train_dataset, valid_dataset]
+        return [train_dataset, valid_dataset]
 
 
 #     # batchwise is slower in this augmentation
@@ -56,6 +65,7 @@ def get_cifar10():
 #         return x, y
 
 
+# TODO: @warren please help to rewrite the function obeying the template class datasets.Dataset
 def get_cell(path='/mount/data/SegBenchmark/medical/cell/'):
     X = np.load(path + 'train/X.npy')
     Y = np.load(path + 'train/Y.npy')[..., None]
