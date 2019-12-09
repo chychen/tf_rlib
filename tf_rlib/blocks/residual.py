@@ -52,7 +52,7 @@ class ResBlock(blocks.Block):
             self.bn = layers.Norm()
         if strides != 1:
             if self.shortcut_type == 'pad':
-                self.downsample = layers.Pooling(pool_size=strides)
+                self.downsample = layers.ShortcutPooling(pool_size=strides)
             elif self.shortcut_type == 'project':
                 self.shortcut = blocks.BasicBlock(filters,
                                                   1,
@@ -113,7 +113,7 @@ class ResBottleneck(blocks.Block):
             self.bn = layers.Norm()
         if strides != 1:
             if self.shortcut_type == 'pad':
-                self.downsample = layers.Pooling(pool_size=strides)
+                self.downsample = layers.ShortcutPooling(pool_size=strides)
             elif self.shortcut_type == 'project':
                 self.shortcut = blocks.BasicBlock(
                     filters * ResBottleneck.outchannel_ratio,
