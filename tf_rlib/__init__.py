@@ -81,7 +81,9 @@ flags.DEFINE_string('conv_norm', 'BatchNormalization',
 flags.DEFINE_float('bn_momentum', 0.9, 'momentum for BatchNormalization')
 flags.DEFINE_float('bn_epsilon', 1e-5, 'epsilon for BatchNormalization')
 ## Pooling
-flags.DEFINE_string('conv_pooling', 'AveragePooling',
+flags.DEFINE_string('conv_pooling', 'MaxPooling',
+                    'pooling for downsampling, encoding features.')
+flags.DEFINE_string('shortcut_pooling', 'AveragePooling',
                     'pooling function name for shortcut')
 flags.DEFINE_string('global_pooling', 'GlobalAveragePooling',
                     'global_pooling function name before dense layer')
@@ -102,6 +104,14 @@ flags.DEFINE_string('filters_mode', 'small',
 #############################
 
 # General Settings (default is None, set value within each runner)
+flags.DEFINE_string(
+    'runner', None,
+    'FLAGS.runner are set as the name of the running runner in the template <runner.py> .'
+)
+flags.DEFINE_string(
+    'loss_fn', None,
+    'go check recommended loss functions in runner API, such as tf.rlib.runners.ADAERunner.LOSSES_POOL'
+)
 
 # ClassificationRunner
 
@@ -109,10 +119,10 @@ flags.DEFINE_string('filters_mode', 'small',
 
 # ADAERunner (Anomaly Detection AutoEncoder Runner)
 flags.DEFINE_integer('latent_dim', None, 'dims of latent space')
-flags.DEFINE_string(
-    'loss_fn', None,
-    'go check recommended loss functions in runner API, such as tf.rlib.runners.ADAERunner.LOSSES_POOL'
-)
+
+# FewShotRunner
+flags.DEFINE_integer('c_way', None, 'c_way')
+flags.DEFINE_integer('k_shot', None, 'k_shot')
 
 #############################
 ########### RLIBS ###########
@@ -128,5 +138,5 @@ try:
 except:
     LOGGER.info('init flags')
 
-# init env settings
-init_tf_rlib(first=True)
+# # init env settings
+# init_tf_rlib(first=True)
