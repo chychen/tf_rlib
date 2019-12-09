@@ -16,19 +16,25 @@ class Omniglot(datasets.Dataset):
     SAVE_PATH = '/tmp/omniglot/'
 
     def __init__(self,
-                 n_train_episode=10000,
+                 n_train_episode=5000,
                  n_valid_episode=1000,
-                 c_way=5,
-                 k_shot=1,
                  img_size=(28, 28),
-                 force_update=False):
+                 force_update=False,
+                 n_train_class=1200):
         super(Omniglot, self).__init__()
         self.n_train_episode = n_train_episode
         self.n_valid_episode = n_valid_episode
-        self.c_way = c_way
-        self.k_shot = k_shot
+        self.c_way = FLAGS.c_way
+        self.k_shot = FLAGS.k_shot
         self.img_shape = img_size + (1, )
+        self.n_train_class = n_train_class
         self.np_dset = self._get_np_dset(img_size, force_update)
+        # get mean,std
+        self.mean = np.mean(self.np_dset[:self.n_train_class])
+        self.std = np.std(self.np_dset[:self.n_train_class])
+        LOGGER.info('mean: {}, stddev: {}'.format(self.mean, self.std))
+        # normalize
+        self.np_dset = (self.np_dset - self.mean) / self.std
         self.data = self._get_tf_dsets(self.np_dset)
 
     def get_data(self):
@@ -80,7 +86,10 @@ class Omniglot(datasets.Dataset):
                                             c_way=self.c_way,
                                             k_shot=self.k_shot,
                                             img_shape=self.img_shape),
-            output_types=(np.float32, np.float32, np.int32))
+            output_types=((np.float32, np.float32),
+                          np.float32)).cache().shuffle(10000).batch(
+                              FLAGS.bs, drop_remainder=True).prefetch(
+                                  buffer_size=tf.data.experimental.AUTOTUNE)
         valid_dataset = tf.data.Dataset.from_generator(
             lambda: self._episode_generator(np_dset,
                                             self.n_valid_episode,
@@ -88,7 +97,9 @@ class Omniglot(datasets.Dataset):
                                             c_way=self.c_way,
                                             k_shot=self.k_shot,
                                             img_shape=self.img_shape),
-            output_types=(np.float32, np.float32, np.int32))
+            output_types=((np.float32, np.float32), np.float32)).cache().batch(
+                FLAGS.bs, drop_remainder=False).prefetch(
+                    buffer_size=tf.data.experimental.AUTOTUNE)
 
         return (train_dataset, valid_dataset)
 
@@ -100,62 +111,71 @@ class Omniglot(datasets.Dataset):
                            k_shot=1,
                            img_shape=[28, 28, 1]):
         n_samples = np_dset.shape[1]  # n_samples=20
-        n_query = n_samples - k_shot  # n_query=19
         if is_train:
-            pool = list(range(0, 1200))
+            pool = list(range(0, self.n_train_class))
+            n_query_per_c = (n_samples - k_shot)
+            n_query = n_query_per_c * c_way  # n_query=19*5
         else:
-            pool = list(range(1200, np_dset.shape[0]))
+            pool = list(range(self.n_train_class, np_dset.shape[0]))
+            n_query_per_c = 1
+            n_query = n_query_per_c * c_way  # n_query=1*5
 
         for i in range(n_episode):
             support_set = np.zeros(shape=[n_query, c_way, k_shot, *img_shape],
                                    dtype=np.float32)
             query_set = np.zeros(shape=[n_query, c_way, k_shot, *img_shape],
                                  dtype=np.float32)
-            y = np.zeros(shape=[n_query, c_way], dtype=np.int32)
+            y = np.zeros(shape=[n_query, c_way], dtype=np.float32)
 
             selected_c_idx = np.random.choice(pool, c_way, replace=False)
             selected_c_data = np_dset[selected_c_idx]
+            # rotation augment classes
+            rotate_degree = np.random.randint(low=0, high=4, size=c_way)
+            for i, v in enumerate(rotate_degree):
+                selected_c_data[i] = np.rot90(selected_c_data[i],
+                                              v,
+                                              axes=(-3, -2))
 
             for c in range(c_way):
                 perm_idx = np.random.permutation(n_samples)
-                # support set
                 selected_s_idx = perm_idx[:k_shot]
+                # support set
                 selected_s_per_query = selected_c_data[
                     c, selected_s_idx]  # k_shot data with same class
                 support_set[:, c:c + 1] = np.tile(selected_s_per_query,
                                                   [n_query, 1, 1, 1, 1, 1])
                 # query set
-                selected_q_idx = perm_idx[k_shot:]
+                selected_q_idx = perm_idx[k_shot:k_shot +
+                                          n_query_per_c]  # n_query_per_c
                 selected_q = selected_c_data[
                     c, selected_q_idx]  # n_query data with same class
-                tmp_q = np.tile(selected_q, [k_shot, 1, 1, 1, 1, 1])
-                tmp_q = np.reshape(tmp_q, [n_query, 1, k_shot, *img_shape])
-                query_set[:, c:c + 1] = tmp_q
-                # label
-                y[:, c] = np.ones(shape=[
-                    n_query,
-                ], dtype=np.int32) * c
+                tmp_q = np.repeat(selected_q, k_shot * c_way, axis=0)
+                tmp_q = np.reshape(tmp_q,
+                                   [n_query_per_c, c_way, k_shot, *img_shape])
+                query_set[c * n_query_per_c:(c + 1) * n_query_per_c] = tmp_q
+                y[c * n_query_per_c:(c + 1) * n_query_per_c, c] = np.ones(
+                    shape=[
+                        n_query_per_c,
+                    ], dtype=np.float32)
 
-            yield support_set, query_set, y
+            yield (support_set, query_set), y
 
-    def vis(self, num_samples):
-        iter_tfdset = iter(self.data[0])
-        counter = 0
-        for i, (s, q, y) in enumerate(iter_tfdset):
-            for n in range(q.shape[0]):
-                for c in range(q.shape[1]):
-                    for k in range(q.shape[2]):
-                        if counter >= num_samples:
-                            break
-                        else:
-                            fig = plt.figure(figsize=[6, 1])
-                            for w in range(q.shape[1]):  # c-way
-                                plt.subplot(1, 6, w + 1)
-                                plt.imshow(s[n, w, k][..., 0], cmap='gray')
-                            plt.subplot(1, 6, 6)
-                            plt.title('query:{}'.format(y[n, c]))
-                            plt.imshow(q[n, c, k][..., 0], cmap='gray')
-                            counter += 1
+    def vis(self, num_samples=10):
+        tfdset = self.data[0]  # train
+        v = next(iter(tfdset))
+        s = v[0][0][0]  # tuple->support_set->batch
+        q = v[0][1][0]  # tuple->query_set->batch
+        y = v[1][0]
+        sampled_idx = np.random.permutation(q.shape[0])[:num_samples]
+        for n in sampled_idx:
+            fig = plt.figure(figsize=[6, 1])
+            for c in range(q.shape[1]):
+                k = 0
+                plt.subplot(1, 6, c + 1)
+                plt.imshow(s[n, c, k][..., 0], cmap='gray')
+            plt.subplot(1, 6, 6)
+            plt.title('query:{}'.format(y[n]))
+            plt.imshow(q[n, 0, k][..., 0], cmap='gray')
 
 
 class Cifar10(datasets.Dataset):

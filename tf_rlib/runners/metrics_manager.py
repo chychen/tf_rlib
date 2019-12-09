@@ -1,5 +1,6 @@
 import os
 import time
+import numpy as np
 import tensorflow as tf
 from absl import flags, logging
 
@@ -87,11 +88,13 @@ class MetricsManager:
                             img_p_sec, epoch, MetricsManager.KEY_VALID)
 
     def show_image(self, x, key, epoch, name='image'):
+        num_data = x.shape[0]
+        num_vis = 3 if num_data > 3 else num_data
+        idx = np.random.choice(list(range(num_data)), num_vis)
         with self.boards_writer[key].as_default():
-            num_vis = 3 if x.shape[0] > 3 else x.shape[0]
-            for i in range(num_vis):
+            for i, v in enumerate(idx):
                 tf.summary.image(str(i) + '/' + name,
-                                 x[i:i + 1],
+                                 x[v:v + 1],
                                  step=epoch,
                                  max_outputs=1)
 
