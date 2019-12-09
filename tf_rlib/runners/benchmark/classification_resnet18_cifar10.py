@@ -21,7 +21,6 @@ class ClassificationResNet18Cifar10(runner.Runner):
     """
     def __init__(self):
         FLAGS.gpus = '0'
-        FLAGS.exp_name = ClassificationResNet18Cifar10.__name__
         # cifar10
         train_dataset, valid_dataset = Cifar10().get_data()
         # resnet-18

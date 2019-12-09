@@ -21,7 +21,6 @@ class ClassificationPyramidNet272Cifar10(runner.Runner):
     """
     def __init__(self):
         FLAGS.gpus = '0,1,2,3'
-        FLAGS.exp_name = ClassificationPyramidNet272Cifar10.__name__
         # pyramidnet-272
         FLAGS.l2 = 1e-4
         FLAGS.depth = 272
