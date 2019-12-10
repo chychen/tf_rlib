@@ -25,7 +25,7 @@ class Pooling(tf.keras.layers.Layer):
 
 class ShortcutPooling(tf.keras.layers.Layer):
     def __init__(self, pool_size=2):
-        super(Pooling, self).__init__()
+        super(ShortcutPooling, self).__init__()
         if FLAGS.shortcut_pooling == 'AveragePooling' or FLAGS.shortcut_pooling == 'MaxPooling':
             pooling_op = layers.__dict__[FLAGS.conv_pooling +
                                          '{}D'.format(FLAGS.dim)]
