@@ -14,6 +14,7 @@ from tf_rlib.models import RN_Omniglot
 from tf_rlib.runners import runner
 from tf_rlib.datasets import Omniglot
 from tf_rlib.losses import MSELoss
+from tf_rlib import utils
 from absl import flags
 from absl import logging
 import numpy as np
@@ -37,12 +38,19 @@ class FewShotRelationNetOmniglot(runner.Runner):
     Parameters: 11,173,962
     """
     def __init__(self):
+        # change visible gpu immediately before dataset api seeing them
+        utils.set_gpus('0')
+        FLAGS.c_way = 5
+        FLAGS.k_shot = 5
+        FLAGS.bs = 1
+        FLAGS.log_level = 'WARN'
         self.dset = Omniglot()
         train_dataset, valid_dataset = self.dset.get_data()
         super(FewShotRelationNetOmniglot,
               self).__init__(train_dataset,
                              valid_dataset=valid_dataset,
                              best_state='acc')
+        self.fit(300, lr=1e-3)
 
     def init(self):
         self.model = RN_Omniglot()

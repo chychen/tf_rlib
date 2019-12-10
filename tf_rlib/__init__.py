@@ -138,5 +138,5 @@ try:
 except:
     LOGGER.info('init flags')
 
-# # init env settings
-# init_tf_rlib(first=True)
+# init env settings
+init_tf_rlib(first=True)

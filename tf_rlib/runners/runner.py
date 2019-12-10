@@ -39,20 +39,16 @@ class Runner:
         self.metrics_manager = MetricsManager(best_state)
         self.models_outs_shapes = dict()
 
-        if self.strategy.num_replicas_in_sync > 1:
-            self.strategy_context = self.strategy.scope()
-        else:
-            self.strategy_context = utils.dummy_context_mgr()
-
-        with self.strategy_context:
+        with self._get_strategy_ctx():
             self.models, train_metrics, valid_metrics = self.init()
             if self.strategy.num_replicas_in_sync > 1:
                 self.train_dataset_dtb = self.strategy.experimental_distribute_dataset(
                     train_dataset)
                 self.valid_dataset_dtb = self.strategy.experimental_distribute_dataset(
                     valid_dataset)
-            self.train_dataset_dtb = train_dataset
-            self.valid_dataset_dtb = valid_dataset
+            else:
+                self.train_dataset_dtb = train_dataset
+                self.valid_dataset_dtb = valid_dataset
 
             # weights init in first call()
             for key, model in self.models.items():
@@ -157,7 +153,7 @@ class Runner:
         pass
 
     def fit(self, epochs, lr):
-        with self.strategy_context:
+        with self._get_strategy_ctx():
             self.begin_fit_callback(lr)
             train_pbar = tqdm(desc='train', leave=False)
             valid_pbar = tqdm(desc='valid', leave=False)
@@ -252,6 +248,13 @@ class Runner:
                 num_batch += 1
                 num_data += data.shape[0]
         return num_batch, num_data
+
+    def _get_strategy_ctx(self):
+        if self.strategy.num_replicas_in_sync > 1:
+            strategy_context = self.strategy.scope()
+        else:
+            strategy_context = utils.dummy_context_mgr()
+        return strategy_context
 
     def _log_data(self, x_batch, y_batch, training):
         key = MetricsManager.KEY_TRAIN if training else MetricsManager.KEY_VALID
