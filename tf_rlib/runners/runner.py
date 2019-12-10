@@ -38,13 +38,19 @@ class Runner:
         self.best_state = best_state
         self.metrics_manager = MetricsManager(best_state)
         self.models_outs_shapes = dict()
-        #         with self.strategy.scope():
-        if True:
+
+        if self.strategy.num_replicas_in_sync > 1:
+            self.strategy_context = self.strategy.scope()
+        else:
+            self.strategy_context = utils.dummy_context_mgr()
+
+        with self.strategy_context:
             self.models, train_metrics, valid_metrics = self.init()
-            #             self.train_dataset_dtb = self.strategy.experimental_distribute_dataset(
-            #                 train_dataset)
-            #             self.valid_dataset_dtb = self.strategy.experimental_distribute_dataset(
-            #                 valid_dataset)
+            if self.strategy.num_replicas_in_sync > 1:
+                self.train_dataset_dtb = self.strategy.experimental_distribute_dataset(
+                    train_dataset)
+                self.valid_dataset_dtb = self.strategy.experimental_distribute_dataset(
+                    valid_dataset)
             self.train_dataset_dtb = train_dataset
             self.valid_dataset_dtb = valid_dataset
 
@@ -99,8 +105,10 @@ class Runner:
             metrics = self.train_step(x, y)
             self.metrics_manager.update(metrics, MetricsManager.KEY_TRAIN)
 
-        train_fn(x, y)
-#         self.strategy.experimental_run_v2(train_fn, args=(x, y))
+        if self.strategy.num_replicas_in_sync > 1:
+            self.strategy.experimental_run_v2(train_fn, args=(x, y))
+        else:
+            train_fn(x, y)
 
     @tf.function
     def test(self, x, y):
@@ -122,10 +130,10 @@ class Runner:
             metrics = self.validate_step(x, y)
             self.metrics_manager.update(metrics, MetricsManager.KEY_VALID)
 
-        valid_fn(x, y)
-
-
-#         self.strategy.experimental_run_v2(valid_fn, args=(x, y))
+        if self.strategy.num_replicas_in_sync > 1:
+            self.strategy.experimental_run_v2(valid_fn, args=(x, y))
+        else:
+            valid_fn(x, y)
 
     @tf.function
     def inference(self, dataset):
@@ -149,8 +157,7 @@ class Runner:
         pass
 
     def fit(self, epochs, lr):
-        #         with self.strategy.scope():
-        if True:
+        with self.strategy_context:
             self.begin_fit_callback(lr)
             train_pbar = tqdm(desc='train', leave=False)
             valid_pbar = tqdm(desc='valid', leave=False)
