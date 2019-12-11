@@ -23,6 +23,8 @@ class Runner:
             models (dict): key(str), value(tf.keras.)
             metrics (dict): key(str), value(tf.keras.metrics.Metric)
         """
+        FLAGS.exp_name = self.__class__.__name__
+
         self.train_dataset = train_dataset
         self.valid_dataset = valid_dataset
         utils.init_tf_rlib(show=True)
@@ -36,19 +38,21 @@ class Runner:
         self.best_state = best_state
         self.metrics_manager = MetricsManager(best_state)
         self.models_outs_shapes = dict()
-        with self.strategy.scope():
+
+        with self._get_strategy_ctx():
             self.models, train_metrics, valid_metrics = self.init()
-            self.train_dataset_dtb = self.strategy.experimental_distribute_dataset(
-                train_dataset)
-            self.valid_dataset_dtb = self.strategy.experimental_distribute_dataset(
-                valid_dataset)
+            if self.strategy.num_replicas_in_sync > 1:
+                self.train_dataset_dtb = self.strategy.experimental_distribute_dataset(
+                    train_dataset)
+                self.valid_dataset_dtb = self.strategy.experimental_distribute_dataset(
+                    valid_dataset)
+            else:
+                self.train_dataset_dtb = train_dataset
+                self.valid_dataset_dtb = valid_dataset
 
             # weights init in first call()
             for key, model in self.models.items():
-                model_outs = model(
-                    tf.keras.Input(
-                        shape=train_dataset.element_spec[0].shape[1:],
-                        dtype=tf.float32))
+                model_outs = model(next(iter(train_dataset))[0])
                 if type(model_outs) != tuple:
                     model_outs = tuple((model_outs, ))
                 outs_shapes = tuple((out.shape for out in model_outs))
@@ -97,7 +101,10 @@ class Runner:
             metrics = self.train_step(x, y)
             self.metrics_manager.update(metrics, MetricsManager.KEY_TRAIN)
 
-        self.strategy.experimental_run_v2(train_fn, args=(x, y))
+        if self.strategy.num_replicas_in_sync > 1:
+            self.strategy.experimental_run_v2(train_fn, args=(x, y))
+        else:
+            train_fn(x, y)
 
     @tf.function
     def test(self, x, y):
@@ -119,7 +126,10 @@ class Runner:
             metrics = self.validate_step(x, y)
             self.metrics_manager.update(metrics, MetricsManager.KEY_VALID)
 
-        self.strategy.experimental_run_v2(valid_fn, args=(x, y))
+        if self.strategy.num_replicas_in_sync > 1:
+            self.strategy.experimental_run_v2(valid_fn, args=(x, y))
+        else:
+            valid_fn(x, y)
 
     @tf.function
     def inference(self, dataset):
@@ -139,11 +149,11 @@ class Runner:
     def begin_fit_callback(self, lr):
         pass
 
-    def begin_epoch_callback(self, epoch_id, epochs, lr):
+    def begin_epoch_callback(self, epoch_id, epochs):
         pass
 
     def fit(self, epochs, lr):
-        with self.strategy.scope():
+        with self._get_strategy_ctx():
             self.begin_fit_callback(lr)
             train_pbar = tqdm(desc='train', leave=False)
             valid_pbar = tqdm(desc='valid', leave=False)
@@ -239,6 +249,13 @@ class Runner:
                 num_data += data.shape[0]
         return num_batch, num_data
 
+    def _get_strategy_ctx(self):
+        if self.strategy.num_replicas_in_sync > 1:
+            strategy_context = self.strategy.scope()
+        else:
+            strategy_context = utils.dummy_context_mgr()
+        return strategy_context
+
     def _log_data(self, x_batch, y_batch, training):
         key = MetricsManager.KEY_TRAIN if training else MetricsManager.KEY_VALID
         # log images
@@ -265,9 +282,34 @@ class Runner:
                 batch_local = batch
             else:
                 batch_local = batch.values[0]
-            if len(batch_local.shape
-                   ) == 4 and batch_local.shape[-1] <= 4:  # [b, w, h, c], c<4
-                self.metrics_manager.show_image(batch_local,
-                                                key,
-                                                epoch=self.epoch,
-                                                name=name)
+
+            if type(batch_local) == tuple:
+                for i, sub_batch in enumerate(batch_local):
+                    # others
+                    if len(
+                            sub_batch.shape
+                    ) == 4 and sub_batch.shape[-1] <= 4:  # [b, w, h, c], c<4
+                        self.metrics_manager.show_image(sub_batch,
+                                                        key,
+                                                        epoch=self.epoch,
+                                                        name=name +
+                                                        '_tuple_{}'.format(i))
+                    # few-shot
+                    few_shot_name = ['support', 'query']
+                    if len(sub_batch.shape) == 7 and sub_batch.shape[
+                            -1] <= 4:  # [b, q, c, k, w, h, c], c<4
+                        sub_batch = tf.reshape(sub_batch,
+                                               [-1, *sub_batch.shape[-3:]])
+                        self.metrics_manager.show_image(sub_batch,
+                                                        key,
+                                                        epoch=self.epoch,
+                                                        name=name + '_' +
+                                                        few_shot_name[i])
+            else:
+                if len(
+                        batch_local.shape
+                ) == 4 and batch_local.shape[-1] <= 4:  # [b, w, h, c], c<4
+                    self.metrics_manager.show_image(batch_local,
+                                                    key,
+                                                    epoch=self.epoch,
+                                                    name=name)

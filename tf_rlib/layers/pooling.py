@@ -23,6 +23,24 @@ class Pooling(tf.keras.layers.Layer):
         return x
 
 
+class ShortcutPooling(tf.keras.layers.Layer):
+    def __init__(self, pool_size=2):
+        super(ShortcutPooling, self).__init__()
+        if FLAGS.shortcut_pooling == 'AveragePooling' or FLAGS.shortcut_pooling == 'MaxPooling':
+            pooling_op = layers.__dict__[FLAGS.conv_pooling +
+                                         '{}D'.format(FLAGS.dim)]
+            self.pooling_op = pooling_op(
+                pool_size=pool_size,
+                strides=None,  # == pool_size
+                padding=FLAGS.padding)
+        else:
+            raise ValueError
+
+    def call(self, x):
+        x = self.pooling_op(x)
+        return x
+
+
 class GlobalPooling(tf.keras.layers.Layer):
     def __init__(self, pool_size=2):
         super(GlobalPooling, self).__init__()

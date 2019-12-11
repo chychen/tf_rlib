@@ -57,7 +57,7 @@ flags.DEFINE_integer(
 flags.DEFINE_float('lr', 1e-3, 'Initial Learning Rate')
 flags.DEFINE_integer('epochs', 300, 'number of epochs for warming up')
 flags.DEFINE_integer('warmup', 5, 'number of epochs for warming up')
-flags.DEFINE_integer('bs', 128, 'global Batch Size for all gpus')
+flags.DEFINE_integer('bs', None, 'global Batch Size for all gpus')
 flags.DEFINE_float('adam_beta_1', 0.9, 'adam beta_1')
 flags.DEFINE_float('adam_beta_2', 0.999, 'adam beta_2')
 flags.DEFINE_float('adam_epsilon', 1e-8,
@@ -81,7 +81,9 @@ flags.DEFINE_string('conv_norm', 'BatchNormalization',
 flags.DEFINE_float('bn_momentum', 0.9, 'momentum for BatchNormalization')
 flags.DEFINE_float('bn_epsilon', 1e-5, 'epsilon for BatchNormalization')
 ## Pooling
-flags.DEFINE_string('conv_pooling', 'AveragePooling',
+flags.DEFINE_string('conv_pooling', 'MaxPooling',
+                    'pooling for downsampling, encoding features.')
+flags.DEFINE_string('shortcut_pooling', 'AveragePooling',
                     'pooling function name for shortcut')
 flags.DEFINE_string('global_pooling', 'GlobalAveragePooling',
                     'global_pooling function name before dense layer')
@@ -102,6 +104,14 @@ flags.DEFINE_string('filters_mode', 'small',
 #############################
 
 # General Settings (default is None, set value within each runner)
+flags.DEFINE_string(
+    'runner', None,
+    'FLAGS.runner are set as the name of the running runner in the template <runner.py> .'
+)
+flags.DEFINE_string(
+    'loss_fn', None,
+    'go check recommended loss functions in runner API, such as tf.rlib.runners.ADAERunner.LOSSES_POOL'
+)
 
 # ClassificationRunner
 
@@ -109,10 +119,10 @@ flags.DEFINE_string('filters_mode', 'small',
 
 # ADAERunner (Anomaly Detection AutoEncoder Runner)
 flags.DEFINE_integer('latent_dim', None, 'dims of latent space')
-flags.DEFINE_string(
-    'loss_fn', None,
-    'go check recommended loss functions in runner API, such as tf.rlib.runners.ADAERunner.LOSSES_POOL'
-)
+
+# FewShotRunner
+flags.DEFINE_integer('c_way', None, 'c_way')
+flags.DEFINE_integer('k_shot', None, 'k_shot')
 
 #############################
 ########### RLIBS ###########

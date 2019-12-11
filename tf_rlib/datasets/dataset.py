@@ -7,3 +7,6 @@ class Dataset:
 
     def get_df(self):
         raise NotImplementedError
+
+    def vis(self, num_samples):
+        raise NotImplementedError
