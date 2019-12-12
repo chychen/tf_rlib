@@ -77,7 +77,8 @@ def init_tf_rlib(show=False, first=False):
     LOGGER.setLevel(FLAGS.log_level)
 
     # envs
-    os.environ["CUDA_VISIBLE_DEVICES"] = FLAGS.gpus
+    if FLAGS.gpus is not None:
+        os.environ["CUDA_VISIBLE_DEVICES"] = FLAGS.gpus
     # enable XLA
     tf.keras.backend.clear_session()
     tf.config.optimizer.set_jit(FLAGS.xla)

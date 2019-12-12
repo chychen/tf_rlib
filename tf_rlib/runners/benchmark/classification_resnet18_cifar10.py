@@ -21,12 +21,14 @@ class ClassificationResNet18Cifar10(runner.Runner):
     """
     def __init__(self):
         FLAGS.gpus = '0'
-        # cifar10
-        train_dataset, valid_dataset = Cifar10().get_data()
         # resnet-18
+        FLAGS.dim = 2
+        FLAGS.out_dim = 10
         FLAGS.bs = 128
         FLAGS.l2 = 1e-4
         FLAGS.depth = 18
+        # cifar10
+        train_dataset, valid_dataset = Cifar10().get_data()
         super(ClassificationResNet18Cifar10,
               self).__init__(train_dataset,
                              valid_dataset=valid_dataset,
@@ -99,3 +101,7 @@ class ClassificationResNet18Cifar10(runner.Runner):
     @tf.function
     def inference(self, dataset):
         raise NotImplementedError
+
+    @property
+    def required_flags(self):
+        pass

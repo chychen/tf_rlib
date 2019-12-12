@@ -93,3 +93,7 @@ class ADAERunner(runner.Runner):
         loss = self.loss_object(y, dec_x)
         loss = loss / FLAGS.bs
         return {'loss': [loss], 'mse': [y, dec_x], 'mae': [y, dec_x]}
+
+    @property
+    def required_flags(self):
+        return ['dim', 'out_dim', 'bs', 'latent_dim', 'loss_fn']

@@ -37,8 +37,9 @@ flags.DEFINE_string('comment', None, 'any comment?')
 flags.DEFINE_string('benchmark_runner', None, 'any comment?')
 
 # Speedup Options
-flags.DEFINE_string('gpus', '0,1,2,3,4,5,6,7',
-                    'os.environ[\'CUDA_VISIBLE_DEVICES\']=?')
+flags.DEFINE_string(
+    'gpus', None,
+    'default None means all, os.environ[\'CUDA_VISIBLE_DEVICES\']=?')
 flags.DEFINE_bool('amp', False, 'use Automatically Mixed Precision?')
 flags.DEFINE_bool(
     'xla', False,
@@ -46,18 +47,19 @@ flags.DEFINE_bool(
 )
 
 # I/O
-flags.DEFINE_integer('out_dim', 10, 'Model output dimensions')
+flags.DEFINE_integer('out_dim', None, 'Model output dimensions')
 flags.DEFINE_integer(
-    'dim', 2,
+    'dim', None,
     'Input Dimensions will decide all the dimensions of operations automatically.'
 )
 
 # General Hyper-perameters
+
 ## Optimizer
-flags.DEFINE_float('lr', 1e-3, 'Initial Learning Rate')
-flags.DEFINE_integer('epochs', 300, 'number of epochs for warming up')
-flags.DEFINE_integer('warmup', 5, 'number of epochs for warming up')
 flags.DEFINE_integer('bs', None, 'global Batch Size for all gpus')
+flags.DEFINE_float('lr', None, 'Initial Learning Rate')
+flags.DEFINE_integer('epochs', None, 'number of epochs for warming up')
+flags.DEFINE_integer('warmup', 5, 'number of epochs for warming up')
 flags.DEFINE_float('adam_beta_1', 0.9, 'adam beta_1')
 flags.DEFINE_float('adam_beta_2', 0.999, 'adam beta_2')
 flags.DEFINE_float('adam_epsilon', 1e-8,

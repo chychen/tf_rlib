@@ -40,6 +40,7 @@ class FewShotRelationNetOmniglot(runner.Runner):
     def __init__(self):
         # change visible gpu immediately before dataset api seeing them
         utils.set_gpus('0')
+        FLAGS.dim = 2
         FLAGS.c_way = 5
         FLAGS.k_shot = 5
         FLAGS.bs = 1
@@ -118,3 +119,7 @@ class FewShotRelationNetOmniglot(runner.Runner):
         loss = loss / FLAGS.bs  # distributed-aware
         probs = tf.nn.softmax(logits)
         return {'loss': [loss], 'acc': [y, probs]}
+
+    @property
+    def required_flags(self):
+        pass

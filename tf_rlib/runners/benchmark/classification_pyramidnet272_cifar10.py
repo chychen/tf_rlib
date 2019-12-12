@@ -22,6 +22,8 @@ class ClassificationPyramidNet272Cifar10(runner.Runner):
     def __init__(self):
         FLAGS.gpus = '0,1,2,3'
         # pyramidnet-272
+        FLAGS.dim = 2
+        FLAGS.out_dim = 10
         FLAGS.bs = 128
         FLAGS.l2 = 1e-4
         FLAGS.depth = 272
@@ -101,3 +103,7 @@ class ClassificationPyramidNet272Cifar10(runner.Runner):
     @tf.function
     def inference(self, dataset):
         raise NotImplementedError
+
+    @property
+    def required_flags(self):
+        pass

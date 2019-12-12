@@ -16,6 +16,13 @@ LOGGER = logging.get_absl_logger()
 class Runner:
     """ please make sure all the losses follow the distributed training mechanism:
     please see https://www.tensorflow.org/tutorials/distribute/custom_training
+    
+    # required implemented functions/properties are:
+    - init()
+    - train_step()
+    - validate_step() 
+    - required_flags()
+    
     """
     def __init__(self, train_dataset, valid_dataset=None, best_state=None):
         """
@@ -24,6 +31,7 @@ class Runner:
             metrics (dict): key(str), value(tf.keras.metrics.Metric)
         """
         FLAGS.exp_name = self.__class__.__name__
+        self._validate_required_flags()
 
         self.train_dataset = train_dataset
         self.valid_dataset = valid_dataset
@@ -134,6 +142,18 @@ class Runner:
     @tf.function
     def inference(self, dataset):
         raise NotImplementedError
+
+    @property
+    def required_flags(self):
+        """ a list, template runner will validate required_flags defined here such as FLAGS.bs, FLAGS.dim ... etc.
+        """
+        raise NotImplementedError
+
+    def _validate_required_flags(self):
+        if self.required_flags is not None:
+            for key in self.required_flags:
+                if FLAGS.flag_values_dict()[key] is None:
+                    raise ValueError('FLAGS.{} should not be None'.format(key))
 
     def evaluate(self, dataset=None):
         """ inference on single gpu only
