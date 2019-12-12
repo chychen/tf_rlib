@@ -1,13 +1,3 @@
-""" Features
-- [v] PyramidNet
-- [v] Warmup LR
-- [v] CosineAnnealing LR
-- [ ] Mixup
-- [ ] AdamW
-- [ ] Fixup Init
-- [ ] Lookahead
-- [v] WeightDecay
-"""
 import tensorflow as tf
 import tensorflow_addons as tfa
 from tf_rlib.models import PyramidNet
@@ -100,6 +90,10 @@ class ClassificationRunner(runner.Runner):
         loss = tf.nn.compute_average_loss(loss, global_batch_size=FLAGS.bs)
         probs = tf.nn.softmax(logits)
         return {'loss': [loss], 'acc': [y, probs]}
+
+    @property
+    def required_flags(self):
+        return ['dim', 'out_dim', 'bs', 'depth', 'bottleneck']
 
     def _TTA(self, x, size):
         # augment
