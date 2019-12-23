@@ -1,7 +1,17 @@
 FROM tensorflow/tensorflow:latest-gpu-py3-jupyter 
 
-RUN apt update
+RUN apt update --fix-missing
 RUN apt install -y vim git screen wget
+# conda
+RUN curl -LO http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
+RUN bash Miniconda3-latest-Linux-x86_64.sh -p /miniconda -b
+RUN rm Miniconda3-latest-Linux-x86_64.sh
+ENV PATH=/miniconda/bin:${PATH}
+RUN conda update -y conda
+RUN conda --version
+# rapids
+RUN conda install -y -c rapidsai -c nvidia -c conda-forge \
+    -c defaults rapids=0.11 python=3.6
 # jupyter
 RUN pip install jupyterlab
 RUN pip install ipywidgets
