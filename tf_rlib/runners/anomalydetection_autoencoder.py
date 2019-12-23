@@ -71,7 +71,8 @@ class ADAERunner(runner.Runner):
         with tf.GradientTape() as tape:
             code, dec_x = self.model(x, training=True)
             loss = self.loss_object(y, dec_x)
-            loss = loss / FLAGS.bs  # distributed-aware
+            loss = tf.nn.compute_average_loss(
+                loss, global_batch_size=FLAGS.bs)  # distributed-aware
             regularization_loss = tf.nn.scale_regularization_loss(
                 tf.math.add_n(self.model.losses))  # distributed-aware
             total_loss = loss + regularization_loss
@@ -91,7 +92,8 @@ class ADAERunner(runner.Runner):
         """
         code, dec_x = self.model(x, training=False)
         loss = self.loss_object(y, dec_x)
-        loss = loss / FLAGS.bs
+        loss = tf.nn.compute_average_loss(
+            loss, global_batch_size=FLAGS.bs)  # distributed-aware
         return {'loss': [loss], 'mse': [y, dec_x], 'mae': [y, dec_x]}
 
     @property
