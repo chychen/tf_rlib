@@ -11,9 +11,11 @@ import numpy as np
 FLAGS = flags.FLAGS
 
 
-class RegressionRunner(runner.Runner):
+class RULRegressionRunner(runner.Runner):
     """ 
     TODO:
+        - custom loss/metrics: the closer to failure, the higher scores.
+        - custome metrics: hit rate with a valid margin.
         - [A General and Adaptive Robust Loss Function, Jonathan T. Barron CVPR, 2019](https://github.com/google-research/google-research/tree/master/robust_loss)
     """
 
@@ -21,9 +23,9 @@ class RegressionRunner(runner.Runner):
 
     def __init__(self, train_dataset, valid_dataset=None, y_denorm_fn=None):
         self.y_denorm_fn = y_denorm_fn
-        super(RegressionRunner, self).__init__(train_dataset,
-                                               valid_dataset=valid_dataset,
-                                               best_state='loss')
+        super(RULRegressionRunner, self).__init__(train_dataset,
+                                                  valid_dataset=valid_dataset,
+                                                  best_state='loss')
 
     def init(self):
         self.model = PyramidNet()
@@ -39,7 +41,7 @@ class RegressionRunner(runner.Runner):
             'mse': metrics.MeanSquaredError('mse', denorm_fn=self.y_denorm_fn),
             'mae': metrics.MeanAbsoluteError('mae', denorm_fn=self.y_denorm_fn)
         }
-        self.loss_object = RegressionRunner.LOSSES_POOL[FLAGS.loss_fn]()
+        self.loss_object = RULRegressionRunner.LOSSES_POOL[FLAGS.loss_fn]()
         self.optim = tfa.optimizers.AdamW(weight_decay=FLAGS.wd,
                                           lr=0.0,
                                           beta_1=FLAGS.adam_beta_1,
