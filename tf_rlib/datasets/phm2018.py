@@ -17,16 +17,16 @@ class PHM2018(datasets.Dataset):
     Data Download link: https://drive.google.com/file/d/15Jx9Scq9FqpIGn8jbAQB_lcHSXvIoPzb/view
     """
     def __init__(
-            self,
-            root_path='/ws_data/PHM2018/phm_data_challenge_2018/',
-            force_update=False,
-            use_tfrecord=False,  # TODO
-            UPPER_BOUND=500.0,
-            DOWNSAMPLE=2,
-            WINSIZE=1000,
-            NONOVERLAP=500,
-            NONOVERLAP_SMALL_TTF=10,
-            TRAIN_RATIO=0.7):
+        self,
+        root_path='/ws_data/PHM2018/phm_data_challenge_2018/',
+        force_update=False,
+        use_tfrecord=False,  # TODO
+        UPPER_BOUND=500.0,
+        DOWNSAMPLE=2,
+        WINSIZE=1000,
+        NONOVERLAP=500,
+        NONOVERLAP_SMALL_TTF=10,
+        TRAIN_RATIO=0.7):
         """ 
         - [ ] categorical feature -> should be embedding or one-hot format.
         - [v] remove NaN
