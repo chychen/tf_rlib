@@ -47,7 +47,7 @@ class Runner:
 
         with self._get_strategy_ctx():
             self.models, train_metrics, valid_metrics = self.init()
-            if self.strategy.num_replicas_in_sync >= 1: #TODO: BUG!!!!
+            if self.strategy.num_replicas_in_sync >= 1:  #TODO: BUG!!!!
                 self.train_dataset = self.strategy.experimental_distribute_dataset(
                     train_dataset)
                 self.valid_dataset = self.strategy.experimental_distribute_dataset(
@@ -170,8 +170,8 @@ class Runner:
     def fit(self, epochs, lr):
         with self._get_strategy_ctx():
             self.begin_fit_callback(lr)
-            train_pbar = tqdm(desc='train', leave=False)
-            valid_pbar = tqdm(desc='valid', leave=False)
+            train_pbar = tqdm(desc='train', leave=False, dynamic_ncols=True)
+            valid_pbar = tqdm(desc='valid', leave=False, dynamic_ncols=True)
             for e_idx in range(epochs):
                 train_num_batch = 0
                 valid_num_batch = 0
@@ -224,8 +224,16 @@ class Runner:
                     valid_num_batch = valid_num_batch + 1
                     self.metrics_manager.set_num_batch(train_num_batch,
                                                        valid_num_batch)
-                    train_pbar.total = train_num_batch
-                    valid_pbar.total = valid_num_batch
+                    train_pbar.close()
+                    valid_pbar.close()
+                    train_pbar = tqdm(desc='train',
+                                      leave=False,
+                                      dynamic_ncols=True,
+                                      total=train_num_batch)
+                    valid_pbar = tqdm(desc='valid',
+                                      leave=False,
+                                      dynamic_ncols=True,
+                                      total=valid_num_batch)
 
                 # logging
                 self.metrics_manager.show_message(self.epoch)
