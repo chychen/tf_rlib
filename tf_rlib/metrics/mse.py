@@ -1,3 +1,4 @@
+import numpy as np
 import tensorflow as tf
 from tensorflow.python.keras.metrics import MeanMetricWrapper
 
@@ -15,10 +16,12 @@ class MeanSquaredError(MeanMetricWrapper):
 
     def mse(self, denorm_fn):
         def func(y_true, y_pred):
+            rank = len(y_true.shape)
             denorm_y_true = denorm_fn(y_true)
             denorm_y_pred = denorm_fn(y_pred)
-            ret = tf.reduce_mean(
-                tf.math.squared_difference(denorm_y_true, denorm_y_pred))
+            ret = tf.reduce_mean(tf.math.squared_difference(
+                denorm_y_true, denorm_y_pred),
+                                 axis=np.arange(1, rank))
             return ret
 
         return func

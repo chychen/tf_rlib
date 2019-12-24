@@ -6,9 +6,7 @@ import numpy as np
 
 def mse_loss(y_true, y_pred):
     rank = len(y_true.shape)
-    return tf.reduce_sum(tf.reduce_mean((y_true - y_pred)**2,
-                                        axis=np.arange(1, rank)),
-                         axis=None)
+    return tf.reduce_mean((y_true - y_pred)**2, axis=np.arange(1, rank))
 
 
 class MSELoss(LossFunctionWrapper):
