@@ -165,10 +165,14 @@ class PHM2018(datasets.Dataset):
         train_small_dset = train_small_dset.cache().shuffle(100000).batch(
             FLAGS.bs // 2, drop_remainder=True)
         train_dset = tf.data.Dataset.zip((train_big_dset, train_small_dset))
-        train_dset = train_dset.flat_map(
-            lambda big_ttf, small_ttf: tf.data.Dataset.from_tensors(big_ttf).
-            concatenate(tf.data.Dataset.from_tensors(small_ttf))).prefetch(
-                buffer_size=tf.data.experimental.AUTOTUNE)
+
+        def merge(big_ttf, small_ttf):
+            dset = tf.data.Dataset.from_tensors(big_ttf)
+            dset = dset.concatenate(tf.data.Dataset.from_tensors(small_ttf))
+            return dset
+
+        train_dset = train_dset.flat_map(merge).prefetch(
+            buffer_size=tf.data.experimental.AUTOTUNE)
         # Validation
         valid_dset = tf.data.Dataset.from_tensor_slices(
             (valid_np_x_all, valid_np_y_all))
