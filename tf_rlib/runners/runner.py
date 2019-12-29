@@ -55,7 +55,7 @@ class Runner:
 
             # weights init in first call()
             for key, model in self.models.items():
-                model_outs = model(next(iter(self.train_dataset))[0])
+                model_outs = model(next(iter(train_dataset))[0])
                 if type(model_outs) != tuple:
                     model_outs = tuple((model_outs, ))
                 outs_shapes = tuple((out.shape for out in model_outs))
