@@ -26,7 +26,8 @@ class PHM2018(datasets.Dataset):
         WINSIZE=1000,
         NONOVERLAP=500,
         NONOVERLAP_SMALL_TTF=10,
-        TRAIN_RATIO=0.7):
+        TRAIN_RATIO=0.7,
+        TRAIN_BATCHS_PER_EPOCH=200):
         """ 
         - [ ] categorical feature -> should be embedding or one-hot format.
         - [v] remove NaN
@@ -61,6 +62,7 @@ class PHM2018(datasets.Dataset):
         self.NONOVERLAP = NONOVERLAP
         self.NONOVERLAP_SMALL_TTF = NONOVERLAP_SMALL_TTF
         self.TRAIN_RATIO = TRAIN_RATIO
+        self.TRAIN_BATCHS_PER_EPOCH = TRAIN_BATCHS_PER_EPOCH
 
         self.data = self._get_tfdset()
 
@@ -158,12 +160,12 @@ class PHM2018(datasets.Dataset):
         # Train
         train_big_dset = tf.data.Dataset.from_tensor_slices(
             (train_np_x_big_ttf, train_np_y_big_ttf))
-        train_big_dset = train_big_dset.cache().shuffle(100000).batch(
-            FLAGS.bs // 2, drop_remainder=True)
+        train_big_dset = train_big_dset.cache().shuffle(100000).repeat().take(
+            self.TRAIN_BATCHS_PER_EPOCH)
         train_small_dset = tf.data.Dataset.from_tensor_slices(
             (train_np_x_small_ttf, train_np_y_small_ttf))
-        train_small_dset = train_small_dset.cache().shuffle(100000).batch(
-            FLAGS.bs // 2, drop_remainder=True)
+        train_small_dset = train_small_dset.cache().shuffle(
+            100000).repeat().take(self.TRAIN_BATCHS_PER_EPOCH)
         train_dset = tf.data.Dataset.zip((train_big_dset, train_small_dset))
 
         def merge(big_ttf, small_ttf):
@@ -171,8 +173,9 @@ class PHM2018(datasets.Dataset):
             dset = dset.concatenate(tf.data.Dataset.from_tensors(small_ttf))
             return dset
 
-        train_dset = train_dset.flat_map(merge).prefetch(
-            buffer_size=tf.data.experimental.AUTOTUNE)
+        train_dset = train_dset.flat_map(merge).batch(
+            FLAGS.bs, drop_remainder=True).prefetch(
+                buffer_size=tf.data.experimental.AUTOTUNE)
         # Validation
         valid_dset = tf.data.Dataset.from_tensor_slices(
             (valid_np_x_all, valid_np_y_all))
