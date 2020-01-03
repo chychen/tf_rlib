@@ -21,14 +21,16 @@ class PHM2018(datasets.Dataset):
         root_path='/ws_data/PHM2018/phm_data_challenge_2018/',
         force_update=False,
         use_tfrecord=False,  # TODO
-        UPPER_BOUND=500.0,
-        DOWNSAMPLE=2,
-        WINSIZE=1000,
-        NONOVERLAP=500,
-        NONOVERLAP_SMALL_TTF=10,
+        ROW_INTERVAL=4,  # = all_df.time.diff().mode().values[0]
+        DOWNSAMPLE=2,  # ratio
+        UPPER_BOUND=1000,  # seconds
+        NONOVERLAP=500,  # seconds, stirde=int(NONOVERLAP/ROW_INTERVAL/DOWNSAMPLE)
+        NONOVERLAP_SMALL_TTF=25,  # seconds, stirde=int(NONOVERLAP_SMALL_TTF/ROW_INTERVAL/DOWNSAMPLE)
         TRAIN_RATIO=0.7,
-        TRAIN_BATCHS_PER_EPOCH=200):
-        """ 
+        TRAIN_DATA_PER_EPOCH=100000):
+        """ one failure could generate UPPER_BOUND/(NONOVERLAP_SMALL_TTF*DOWNSAMPLE*ROW_INTERVAL(4s)) amount for training/validating abnormal data
+        UPPER_BOUND: equal to window size for each data, also used to seperate normal and abnormal!!
+        
         - [ ] categorical feature -> should be embedding or one-hot format.
         - [v] remove NaN
         - [v] normalize input/output
@@ -48,21 +50,28 @@ class PHM2018(datasets.Dataset):
         """
         super(PHM2018, self).__init__()
         self.root_path = root_path
-        self.numpy_path = os.path.join(
-            self.root_path,
-            'u{}d{}w{}n{}t{}'.format(UPPER_BOUND, DOWNSAMPLE, WINSIZE,
-                                     NONOVERLAP, TRAIN_RATIO))
-        if not os.path.exists(self.numpy_path):
-            os.makedirs(self.numpy_path)
         self.force_update = force_update
         self.use_tfrecord = use_tfrecord
+        self.ROW_INTERVAL = ROW_INTERVAL
         self.UPPER_BOUND = UPPER_BOUND
         self.DOWNSAMPLE = DOWNSAMPLE
-        self.WINSIZE = WINSIZE
+        self.WINSIZE = int(UPPER_BOUND / ROW_INTERVAL / DOWNSAMPLE)
         self.NONOVERLAP = NONOVERLAP
+        self.NONOVERLAP_STRIDE = int(NONOVERLAP / ROW_INTERVAL / DOWNSAMPLE)
         self.NONOVERLAP_SMALL_TTF = NONOVERLAP_SMALL_TTF
+        self.NONOVERLAP_SMALL_TTF_STRIDE = int(NONOVERLAP_SMALL_TTF /
+                                               ROW_INTERVAL / DOWNSAMPLE)
         self.TRAIN_RATIO = TRAIN_RATIO
-        self.TRAIN_BATCHS_PER_EPOCH = TRAIN_BATCHS_PER_EPOCH
+        self.TRAIN_DATA_PER_EPOCH = TRAIN_DATA_PER_EPOCH
+        self.numpy_path = os.path.join(
+            self.root_path,
+            'UPPERBOUND{}DownSample{}WSIZE{}NOverNormal{}NOverAB{}TrainRatio{}'
+            .format(self.UPPER_BOUND, self.DOWNSAMPLE, self.WINSIZE,
+                    self.NONOVERLAP, self.NONOVERLAP_SMALL_TTF,
+                    self.TRAIN_RATIO))
+        LOGGER.info('data locate at: {}'.format(self.numpy_path))
+        if not os.path.exists(self.numpy_path):
+            os.makedirs(self.numpy_path)
 
         self.data = self._get_tfdset()
 
@@ -113,6 +122,7 @@ class PHM2018(datasets.Dataset):
             np.save(all_small_ttf_x_path, all_small_ttf_x_np)
             np.save(all_small_ttf_y_path, all_small_ttf_y_np)
 
+        # split into train and validation
         big_num_train = int(len(all_big_ttf_y_np) * self.TRAIN_RATIO)
         small_num_train = int(len(all_small_ttf_y_np) * self.TRAIN_RATIO)
 
@@ -149,23 +159,27 @@ class PHM2018(datasets.Dataset):
         valid_np_x_all = (valid_np_x_all - mean) / std
         valid_np_y_all = valid_np_y_all / self.UPPER_BOUND
 
-        LOGGER.info(train_np_x_big_ttf.shape)
-        LOGGER.info(train_np_y_big_ttf.shape)
-        LOGGER.info(train_np_x_small_ttf.shape)
-        LOGGER.info(train_np_y_small_ttf.shape)
-        LOGGER.info(valid_np_x_all.shape)
-        LOGGER.info(valid_np_y_all.shape)
+        LOGGER.info('train normal data shape:{}'.format(
+            train_np_x_big_ttf.shape))
+        LOGGER.info('train normal label shape:{}'.format(
+            train_np_y_big_ttf.shape))
+        LOGGER.info('train abnormal data shape:{}'.format(
+            train_np_x_small_ttf.shape))
+        LOGGER.info('train abnormal label shape:{}'.format(
+            train_np_y_small_ttf.shape))
+        LOGGER.info('valid shape:{}'.format(valid_np_x_all.shape))
+        LOGGER.info('label shape:{}'.format(valid_np_y_all.shape))
         LOGGER.info('X mean\n{}\nstd:\n{}'.format(mean, std))
 
         # Train
         train_big_dset = tf.data.Dataset.from_tensor_slices(
             (train_np_x_big_ttf, train_np_y_big_ttf))
         train_big_dset = train_big_dset.cache().shuffle(100000).repeat().take(
-            self.TRAIN_BATCHS_PER_EPOCH)
+            self.TRAIN_DATA_PER_EPOCH // 2)
         train_small_dset = tf.data.Dataset.from_tensor_slices(
             (train_np_x_small_ttf, train_np_y_small_ttf))
         train_small_dset = train_small_dset.cache().shuffle(
-            100000).repeat().take(self.TRAIN_BATCHS_PER_EPOCH)
+            100000).repeat().take(self.TRAIN_DATA_PER_EPOCH // 2)
         train_dset = tf.data.Dataset.zip((train_big_dset, train_small_dset))
 
         def merge(big_ttf, small_ttf):
@@ -195,9 +209,6 @@ class PHM2018(datasets.Dataset):
         all_df.iloc[:, -3:] = all_df.iloc[:, -3:].clip(0, self.UPPER_BOUND)
         ## remove NaN ##
         all_df.dropna(axis=0, inplace=True)
-        ROW_INTERVAL = all_df.time.diff().mode().values[0]
-        # split into train and validation
-        total_len = all_df.values.shape[0]
         all_df.drop(columns='Tool', inplace=True)  # TODO !!!
         all_df = all_df.astype('float32')
         big_ttf_df = all_df[(all_df.iloc[:, -3:] >= self.UPPER_BOUND).any(
@@ -205,111 +216,60 @@ class PHM2018(datasets.Dataset):
         small_ttf_df = all_df[(all_df.iloc[:, -3:] < self.UPPER_BOUND).any(
             axis=1)]
 
+        #         ## validate intervals between records are equivalent. ##
+        #         def wrap_as_np(df, nonoverlap):
+        #             df = df.reset_index()
+        #             segment_idx_df = df[(df.time.diff() != self.ROW_INTERVAL)]
+        #             segment_idx = segment_idx_df.index.values
+        #             ## windowing ## WINSIZE, DOWNSAMPLE, NONOVERLAP
+        #             start = 0
+        #             result_x = []
+        #             result_y = []
+        #             data_x = df.values[::self.DOWNSAMPLE, :-3]
+        #             data_y = df.values[::self.DOWNSAMPLE, -3:]
+        #             for end in tqdm(segment_idx[1:]):
+        #                 tmp_x = data_x[start:end]
+        #                 tmp_y = data_y[start:end]
+        #                 if tmp_x.shape[0] > self.WINSIZE:  # big enough
+        #                     tmp_result_x = []
+        #                     # -1 because x(t-k)~x(t) -> y(t)
+        #                     for i in range(0, tmp_x.shape[0] - self.WINSIZE + 1,
+        #                                    nonoverlap):
+        #                         tmp_result_x.append(tmp_x[i:i + self.WINSIZE])
+        #                     tmp_result_x = np.array(tmp_result_x)
+        #                     tmp_result_y = tmp_y[self.WINSIZE - 1::nonoverlap]
+        #                     result_x.append(tmp_result_x)
+        #                     result_y.append(tmp_result_y)
+        #                 start = end
+        #             if len(result_x) > 0:
+        #                 result_x = np.concatenate(result_x, axis=0)
+        #                 result_y = np.concatenate(result_y, axis=0)
+        #                 assert result_x.shape[0] == result_y.shape[0]
+        #             return result_x, result_y
+
         def wrap_as_np(df, nonoverlap):
-            ## validate intervals between records are equivalent. ##
-            segment_idx_df = df[(df.time.diff() != ROW_INTERVAL)]
-            segment_idx = segment_idx_df.index.values
-            ## windowing ## WINSIZE, DOWNSAMPLE, NONOVERLAP
-            start = 0
             result_x = []
             result_y = []
             data_x = df.values[::self.DOWNSAMPLE, :-3]
             data_y = df.values[::self.DOWNSAMPLE, -3:]
-            for end in tqdm(segment_idx[1:]):
-                tmp_x = data_x[start:end]
-                tmp_y = data_y[start:end]
-                if tmp_x.shape[0] > self.WINSIZE:  # big enough
-                    tmp_result_x = []
-                    # -1 because x(t-k)~x(t) -> y(t)
-                    for i in range(0, tmp_x.shape[0] - self.WINSIZE + 1,
-                                   nonoverlap):
-                        tmp_result_x.append(tmp_x[i:i + self.WINSIZE])
-                    tmp_result_x = np.array(tmp_result_x)
-                    tmp_result_y = tmp_y[self.WINSIZE - 1::nonoverlap]
-                    result_x.append(tmp_result_x)
-                    result_y.append(tmp_result_y)
-                start = end
+            if data_x.shape[0] > self.WINSIZE:  # big enough
+                tmp_result_x = []
+                # -1 because x(t-k)~x(t) -> y(t)
+                for i in range(0, data_x.shape[0] - self.WINSIZE + 1,
+                               nonoverlap):
+                    tmp_result_x.append(data_x[i:i + self.WINSIZE])
+                tmp_result_x = np.array(tmp_result_x)
+                tmp_result_y = data_y[self.WINSIZE - 1::nonoverlap]
+                result_x.append(tmp_result_x)
+                result_y.append(tmp_result_y)
             if len(result_x) > 0:
                 result_x = np.concatenate(result_x, axis=0)
                 result_y = np.concatenate(result_y, axis=0)
                 assert result_x.shape[0] == result_y.shape[0]
             return result_x, result_y
 
-        big_ttf_x_np, big_ttf_y_np = wrap_as_np(big_ttf_df, self.NONOVERLAP)
-        small_ttf_x_np, small_ttf_y_np = wrap_as_np(small_ttf_df,
-                                                    self.NONOVERLAP_SMALL_TTF)
+        big_ttf_x_np, big_ttf_y_np = wrap_as_np(big_ttf_df,
+                                                self.NONOVERLAP_STRIDE)
+        small_ttf_x_np, small_ttf_y_np = wrap_as_np(
+            small_ttf_df, self.NONOVERLAP_SMALL_TTF_STRIDE)
         return (big_ttf_x_np, big_ttf_y_np), (small_ttf_x_np, small_ttf_y_np)
-
-
-#     def _get_dsets(self):
-#         # read x and y dataframe from csv
-#         df_data = pd.read_csv(self.DATA_PATH)
-#         df_ttf = pd.read_csv(self.TTF_PATH)
-#         # merge and clean up
-#         all_df = pd.merge(df_data, df_ttf, how='inner', on='time')
-#         all_df.dropna(axis=0, inplace=True)
-#         ROW_INTERVAL = all_df.time.diff().mode().values[0]
-#         # split into train and valid
-#         total_len = all_df.values.shape[0]
-#         train_df = all_df.iloc[:int(total_len * self.TRAIN_RATIO)]
-#         valid_df = all_df.iloc[int(total_len * self.TRAIN_RATIO):]
-
-#         def df_handler(tmp_data):
-#             x_dset = tf.data.Dataset.from_tensor_slices(
-#                 tmp_data.values[:, :-3])
-#             y_dset = tf.data.Dataset.from_tensor_slices(
-#                 tmp_data.values[:, -3:])
-#             x_dset = x_dset.window(self.WINSIZE,
-#                                     shift=self.NONOVERLAP,
-#                                     stride=self.DOWNSAMPLE,
-#                                     drop_remainder=True)
-#             x_dset = x_dset.flat_map(
-#                 lambda window: window.batch(self.WINSIZE))
-#             tmp_dset = tf.data.Dataset.zip(
-#                 (x_dset, y_dset))
-#             return tmp_dset
-
-#         def wrap_as_tfdataset(df):
-#             df.drop(columns='Tool',
-#                     inplace=True)  # Tool are same within same machine
-#             df = df.astype('float32')
-#             segment_idx_df = df[(df.time.diff() != ROW_INTERVAL)]
-#             segment_idx = segment_idx_df.index.values
-#             # difine first dset
-#             start = 0
-#             end = segment_idx[1]
-#             tmp_data = df[start:end]
-#             all_dsets = df_handler(tmp_data)
-#             start = end
-#             # use first dset concat with others
-#             for end in tqdm(segment_idx[2:]):
-#                 tmp_data = df[start:end]
-#                 tmp_dset = df_handler(tmp_data)
-#                 all_dsets = all_dsets.concatenate(tmp_dset)
-#                 start = end
-#             return all_dsets
-
-#         train_dset = wrap_as_tfdataset(train_df)
-#         train_dset = train_dset.batch(FLAGS.bs, drop_remainder=True)
-#         valid_dset = wrap_as_tfdataset(valid_df)
-#         valid_dset = valid_dset.batch(FLAGS.bs, drop_remainder=False)
-
-#         return train_dset, valid_dset
-
-# split train into big ttf and small ttf numpy, for balancing batch when training
-#             def get_small_ttf_mask(nparray):
-#                 indicies = []
-#                 for index, ttfs in enumerate(nparray):
-#                     for ttf in ttfs:
-#                         if ttf < self.UPPER_BOUND:
-#                             indicies.append(index)
-#                             break
-#                 mask = np.zeros([nparray.shape[0],],dtype=bool)
-#                 mask[indicies]=True
-#                 return mask
-
-#             mask = get_small_ttf_mask(train_np_y_big_ttf)
-#             train_np_x_small_ttf = train_np_x_big_ttf[mask]
-#             train_np_y_small_ttf = train_np_y_big_ttf[mask]
-#             train_np_x_big_ttf = train_np_x_big_ttf[~mask]
-#             train_np_y_big_ttf = train_np_y_big_ttf[~mask]

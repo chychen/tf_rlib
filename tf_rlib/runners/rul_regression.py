@@ -30,12 +30,36 @@ class RULRegressionRunner(runner.Runner):
     def init(self):
         self.model = PyramidNet()
         train_metrics = {
-            'loss': tf.keras.metrics.MeanTensor('loss'),
-            'mape': tf.keras.metrics.MeanAbsolutePercentageError('mape'),
-            'mse': metrics.MeanSquaredError('mse', denorm_fn=self.y_denorm_fn),
-            'mae': metrics.MeanAbsoluteError('mae',
-                                             denorm_fn=self.y_denorm_fn),
-            'mae_raw': metrics.MeanAbsoluteError('mae_raw')
+            'loss':
+            tf.keras.metrics.MeanTensor('loss'),
+            'mape':
+            tf.keras.metrics.MeanAbsolutePercentageError('mape'),
+            'mse':
+            metrics.MeanSquaredError('mse', denorm_fn=self.y_denorm_fn),
+            'mae':
+            metrics.MeanAbsoluteError('mae', denorm_fn=self.y_denorm_fn),
+            'mae_raw':
+            metrics.MeanAbsoluteError('mae_raw'),
+            'hitrate_mean':
+            metrics.RULHitRate('hitrate_mean',
+                               target_dim=None,
+                               margin=100,
+                               denorm_fn=self.y_denorm_fn),
+            'hitrate_0':
+            metrics.RULHitRate('hitrate_0',
+                               target_dim=0,
+                               margin=100,
+                               denorm_fn=self.y_denorm_fn),
+            'hitrate_1':
+            metrics.RULHitRate('hitrate_1',
+                               target_dim=1,
+                               margin=100,
+                               denorm_fn=self.y_denorm_fn),
+            'hitrate_2':
+            metrics.RULHitRate('hitrate_2',
+                               target_dim=2,
+                               margin=100,
+                               denorm_fn=self.y_denorm_fn)
         }
         valid_metrics = {
             'loss':
@@ -119,7 +143,11 @@ class RULRegressionRunner(runner.Runner):
             'mse': [y, logits],
             'mape': [y, logits],
             'mae': [y, logits],
-            'mae_raw': [y, logits]
+            'mae_raw': [y, logits],
+            'hitrate_mean': [y, logits],
+            'hitrate_0': [y, logits],
+            'hitrate_1': [y, logits],
+            'hitrate_2': [y, logits]
         }
 
     def validate_step(self, x, y):
