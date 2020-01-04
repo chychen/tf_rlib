@@ -11,9 +11,11 @@ import numpy as np
 FLAGS = flags.FLAGS
 
 
-class RegressionRunner(runner.Runner):
+class RULRegressionRunner(runner.Runner):
     """ 
     TODO:
+        - custom loss/metrics: the closer to failure, the higher scores.
+        - custome metrics: hit rate with a valid margin.
         - [A General and Adaptive Robust Loss Function, Jonathan T. Barron CVPR, 2019](https://github.com/google-research/google-research/tree/master/robust_loss)
     """
 
@@ -21,25 +23,75 @@ class RegressionRunner(runner.Runner):
 
     def __init__(self, train_dataset, valid_dataset=None, y_denorm_fn=None):
         self.y_denorm_fn = y_denorm_fn
-        super(RegressionRunner, self).__init__(train_dataset,
-                                               valid_dataset=valid_dataset,
-                                               best_state='loss')
+        super(RULRegressionRunner, self).__init__(train_dataset,
+                                                  valid_dataset=valid_dataset,
+                                                  best_state='loss')
 
     def init(self):
         self.model = PyramidNet()
         train_metrics = {
-            'loss': tf.keras.metrics.MeanTensor('loss'),
-            'mape': tf.keras.metrics.MeanAbsolutePercentageError('mape'),
-            'mse': metrics.MeanSquaredError('mse', denorm_fn=self.y_denorm_fn),
-            'mae': metrics.MeanAbsoluteError('mae', denorm_fn=self.y_denorm_fn)
+            'loss':
+            tf.keras.metrics.MeanTensor('loss'),
+            'mape':
+            tf.keras.metrics.MeanAbsolutePercentageError('mape'),
+            'mse':
+            metrics.MeanSquaredError('mse', denorm_fn=self.y_denorm_fn),
+            'mae':
+            metrics.MeanAbsoluteError('mae', denorm_fn=self.y_denorm_fn),
+            'mae_raw':
+            metrics.MeanAbsoluteError('mae_raw'),
+            'hitrate_mean':
+            metrics.RULHitRate('hitrate_mean',
+                               target_dim=None,
+                               margin=100,
+                               denorm_fn=self.y_denorm_fn),
+            'hitrate_0':
+            metrics.RULHitRate('hitrate_0',
+                               target_dim=0,
+                               margin=100,
+                               denorm_fn=self.y_denorm_fn),
+            'hitrate_1':
+            metrics.RULHitRate('hitrate_1',
+                               target_dim=1,
+                               margin=100,
+                               denorm_fn=self.y_denorm_fn),
+            'hitrate_2':
+            metrics.RULHitRate('hitrate_2',
+                               target_dim=2,
+                               margin=100,
+                               denorm_fn=self.y_denorm_fn)
         }
         valid_metrics = {
-            'loss': tf.keras.metrics.MeanTensor('loss'),
-            'mape': tf.keras.metrics.MeanAbsolutePercentageError('mape'),
-            'mse': metrics.MeanSquaredError('mse', denorm_fn=self.y_denorm_fn),
-            'mae': metrics.MeanAbsoluteError('mae', denorm_fn=self.y_denorm_fn)
+            'loss':
+            tf.keras.metrics.MeanTensor('loss'),
+            'mape':
+            tf.keras.metrics.MeanAbsolutePercentageError('mape'),
+            'mse':
+            metrics.MeanSquaredError('mse', denorm_fn=self.y_denorm_fn),
+            'mae':
+            metrics.MeanAbsoluteError('mae', denorm_fn=self.y_denorm_fn),
+            'hitrate_mean':
+            metrics.RULHitRate('hitrate_mean',
+                               target_dim=None,
+                               margin=100,
+                               denorm_fn=self.y_denorm_fn),
+            'hitrate_0':
+            metrics.RULHitRate('hitrate_0',
+                               target_dim=0,
+                               margin=100,
+                               denorm_fn=self.y_denorm_fn),
+            'hitrate_1':
+            metrics.RULHitRate('hitrate_1',
+                               target_dim=1,
+                               margin=100,
+                               denorm_fn=self.y_denorm_fn),
+            'hitrate_2':
+            metrics.RULHitRate('hitrate_2',
+                               target_dim=2,
+                               margin=100,
+                               denorm_fn=self.y_denorm_fn)
         }
-        self.loss_object = RegressionRunner.LOSSES_POOL[FLAGS.loss_fn]()
+        self.loss_object = RULRegressionRunner.LOSSES_POOL[FLAGS.loss_fn]()
         self.optim = tfa.optimizers.AdamW(weight_decay=FLAGS.wd,
                                           lr=0.0,
                                           beta_1=FLAGS.adam_beta_1,
@@ -90,7 +142,12 @@ class RegressionRunner(runner.Runner):
             'loss': [loss],
             'mse': [y, logits],
             'mape': [y, logits],
-            'mae': [y, logits]
+            'mae': [y, logits],
+            'mae_raw': [y, logits],
+            'hitrate_mean': [y, logits],
+            'hitrate_0': [y, logits],
+            'hitrate_1': [y, logits],
+            'hitrate_2': [y, logits]
         }
 
     def validate_step(self, x, y):
@@ -109,7 +166,11 @@ class RegressionRunner(runner.Runner):
             'loss': [loss],
             'mse': [y, logits],
             'mape': [y, logits],
-            'mae': [y, logits]
+            'mae': [y, logits],
+            'hitrate_mean': [y, logits],
+            'hitrate_0': [y, logits],
+            'hitrate_1': [y, logits],
+            'hitrate_2': [y, logits]
         }
 
     @tf.function

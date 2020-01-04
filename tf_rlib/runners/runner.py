@@ -33,8 +33,6 @@ class Runner:
         FLAGS.exp_name = self.__class__.__name__
         self._validate_required_flags()
 
-        self.train_dataset = train_dataset
-        self.valid_dataset = valid_dataset
         utils.init_tf_rlib(show=True)
         self.strategy = tf.distribute.MirroredStrategy()
         LOGGER.info('Number of devices: {}'.format(
@@ -49,14 +47,11 @@ class Runner:
 
         with self._get_strategy_ctx():
             self.models, train_metrics, valid_metrics = self.init()
-            if self.strategy.num_replicas_in_sync > 1:
-                self.train_dataset_dtb = self.strategy.experimental_distribute_dataset(
+            if self.strategy.num_replicas_in_sync >= 1:  #TODO: BUG!!!!
+                self.train_dataset = self.strategy.experimental_distribute_dataset(
                     train_dataset)
-                self.valid_dataset_dtb = self.strategy.experimental_distribute_dataset(
+                self.valid_dataset = self.strategy.experimental_distribute_dataset(
                     valid_dataset)
-            else:
-                self.train_dataset_dtb = train_dataset
-                self.valid_dataset_dtb = valid_dataset
 
             # weights init in first call()
             for key, model in self.models.items():
@@ -175,8 +170,8 @@ class Runner:
     def fit(self, epochs, lr):
         with self._get_strategy_ctx():
             self.begin_fit_callback(lr)
-            train_pbar = tqdm(desc='train', leave=False)
-            valid_pbar = tqdm(desc='valid', leave=False)
+            train_pbar = tqdm(desc='train', leave=False, dynamic_ncols=True)
+            valid_pbar = tqdm(desc='valid', leave=False, dynamic_ncols=True)
             for e_idx in range(epochs):
                 train_num_batch = 0
                 valid_num_batch = 0
@@ -189,7 +184,7 @@ class Runner:
                 self.metrics_manager.reset()
                 # train one epoch
                 for train_num_batch, (x_batch, y_batch) in enumerate(
-                        self.train_dataset_dtb):
+                        self.train_dataset):
                     self.step = self.step + 1
                     # train one step
                     if FLAGS.profile:
@@ -199,12 +194,14 @@ class Runner:
                     else:
                         self._train_step(x_batch, y_batch)
                     train_pbar.update(1)
+                    train_pbar.set_postfix(
+                        {'epoch/total': '{}/{}'.format(self.epoch, epochs)})
                 self._log_data(x_batch, y_batch, training=True)
 
                 # validate one epoch
-                if self.valid_dataset_dtb is not None:
+                if self.valid_dataset is not None:
                     for valid_num_batch, (x_batch, y_batch) in enumerate(
-                            self.valid_dataset_dtb):
+                            self.valid_dataset):
                         # validate one step
                         self._validate_step(x_batch, y_batch)
                         valid_pbar.update(1)
@@ -227,8 +224,16 @@ class Runner:
                     valid_num_batch = valid_num_batch + 1
                     self.metrics_manager.set_num_batch(train_num_batch,
                                                        valid_num_batch)
-                    train_pbar.total = train_num_batch
-                    valid_pbar.total = valid_num_batch
+                    train_pbar.close()
+                    valid_pbar.close()
+                    train_pbar = tqdm(desc='train',
+                                      leave=False,
+                                      dynamic_ncols=True,
+                                      total=train_num_batch)
+                    valid_pbar = tqdm(desc='valid',
+                                      leave=False,
+                                      dynamic_ncols=True,
+                                      total=valid_num_batch)
 
                 # logging
                 self.metrics_manager.show_message(self.epoch)

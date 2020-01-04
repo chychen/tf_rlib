@@ -6,7 +6,11 @@ FLAGS = flags.FLAGS
 
 
 class Conv(tf.keras.layers.Layer):
-    def __init__(self, filters, ks, strides=1, use_bias=False,
+    def __init__(self,
+                 filters,
+                 ks,
+                 strides=1,
+                 use_bias=False,
                  transpose=False):
         super(Conv, self).__init__()
 

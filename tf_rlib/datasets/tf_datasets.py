@@ -153,10 +153,10 @@ class Omniglot(datasets.Dataset):
                 tmp_q = np.reshape(tmp_q,
                                    [n_query_per_c, c_way, k_shot, *img_shape])
                 query_set[c * n_query_per_c:(c + 1) * n_query_per_c] = tmp_q
-                y[c * n_query_per_c:(c + 1) * n_query_per_c, c] = np.ones(
-                    shape=[
-                        n_query_per_c,
-                    ], dtype=np.float32)
+                y[c * n_query_per_c:(c + 1) * n_query_per_c,
+                  c] = np.ones(shape=[
+                      n_query_per_c,
+                  ], dtype=np.float32)
 
             yield (support_set, query_set), y
 
