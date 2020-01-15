@@ -1,6 +1,6 @@
 import tensorflow as tf
 from tf_rlib.models import PyramidNet
-from tf_rlib.runners import runner
+from tf_rlib.runners.base import runner
 from tf_rlib.datasets import Cifar10
 from absl import flags
 from absl import logging

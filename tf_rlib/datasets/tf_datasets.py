@@ -194,8 +194,9 @@ class Cifar10(datasets.Dataset):
         stddev = train_data_x.std(axis=(0, 1, 2))
         train_data_x = (train_data_x - mean) / stddev
         valid_data_x = (valid_data_x - mean) / stddev
-        #     train_data_x = train_data_x.astype(np.float16)
-        #     valid_data_x = valid_data_x.astype(np.float16)
+        if FLAGS.amp:
+            train_data_x = train_data_x.astype(np.float16)
+            valid_data_x = valid_data_x.astype(np.float16)
         train_data_y = train_data[1]
         valid_data_y = valid_data[1]
         LOGGER.info('mean:{}, std:{}'.format(mean, stddev))

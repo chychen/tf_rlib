@@ -1,7 +1,7 @@
 import tensorflow as tf
 import tensorflow_addons as tfa
 from tf_rlib.models import UNet as net
-from tf_rlib.runners import runner
+from tf_rlib.runners.base import runner
 from tf_rlib.metrics import DiceCoefficient
 from tf_rlib.losses import CustomLoss
 from tf_rlib.losses.dice_loss import dice_loss
@@ -80,7 +80,6 @@ class SegmentationRunner(runner.Runner):
             regularization_loss = tf.nn.scale_regularization_loss(
                 tf.math.add_n(self.model.losses))  # distributed-aware
             total_loss = loss + regularization_loss
-            total_loss = loss
 
         grads = tape.gradient(total_loss, self.model.trainable_weights)
         self.optim.apply_gradients(zip(grads, self.model.trainable_weights))

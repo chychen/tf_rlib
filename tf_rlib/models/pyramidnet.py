@@ -40,6 +40,10 @@ class PyramidNet(models.Model):
         ]
 
         self.block_ratio = self.model_alpha / total_blocks
+        if FLAGS.amp:
+            LOGGER.warn(
+                'layers_per_block = 3 if FLAGS.bottleneck else 2, total_blocks=(FLAGS.depth-2)/layers_per_block, please set FLAGS.model_alpha=total_blocks*8 to make sure channels are equal to multiple of 8.'
+            )
         self.block_counter = 0
 
         self.head = blocks.BasicBlock(self.in_filters,

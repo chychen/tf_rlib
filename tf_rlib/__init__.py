@@ -8,7 +8,7 @@ from absl import app
 from absl import flags, logging
 from tf_rlib.utils.ipython import isnotebook
 from tf_rlib import blocks, datasets, layers, models, research, runners, utils, metrics, losses
-from tf_rlib.utils import purge_logs, init_tf_rlib
+from tf_rlib.utils import init_tf_rlib
 
 # envs
 current_time = datetime.datetime.now(
@@ -93,7 +93,7 @@ flags.DEFINE_string('global_pooling', 'GlobalAveragePooling',
 # Model Architecture
 flags.DEFINE_integer(
     'model_alpha', 200,
-    '110 layers ranged from 48 to 270 in paper, seems larger is better but parameters inefficiency'
+    '110 layers ranged from 48 to 270 in paper, seems larger is better but parameters inefficiency, if FLAGS.amp=True, layers_per_block = 3 if FLAGS.bottleneck else 2, total_blocks=(FLAGS.depth-2)/layers_per_block, please set FLAGS.model_alpha=total_blocks*8 to make sure channels are equal to multiple of 8.'
 )
 flags.DEFINE_integer('depth', None, 'depth>=50 use Bottleneck')
 flags.DEFINE_bool('bottleneck', None,

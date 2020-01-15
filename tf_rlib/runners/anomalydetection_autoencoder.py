@@ -1,7 +1,7 @@
 import tensorflow as tf
 import tensorflow_addons as tfa
 from tf_rlib.models import AE
-from tf_rlib.runners import runner
+from tf_rlib.runners.base import runner
 from tf_rlib import metrics, losses
 from absl import flags
 from absl import logging
@@ -76,7 +76,6 @@ class ADAERunner(runner.Runner):
             regularization_loss = tf.nn.scale_regularization_loss(
                 tf.math.add_n(self.model.losses))  # distributed-aware
             total_loss = loss + regularization_loss
-            total_loss = loss
 
         grads = tape.gradient(total_loss, self.model.trainable_weights)
         self.optim.apply_gradients(zip(grads, self.model.trainable_weights))
