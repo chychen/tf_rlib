@@ -6,7 +6,7 @@ from tqdm.auto import tqdm
 from absl import flags, logging
 import tensorflow as tf
 from tensorflow.python.eager import profiler
-from tf_rlib.runners import MetricsManager
+from tf_rlib.runners.base.metrics_manager import MetricsManager
 from tf_rlib import utils, metrics
 
 FLAGS = flags.FLAGS
@@ -31,7 +31,7 @@ class Runner:
             metrics (dict): key(str), value(tf.keras.metrics.Metric)
         """
         FLAGS.exp_name = self.__class__.__name__
-        self._validate_required_flags()
+        self._validate_flags()
 
         utils.init_tf_rlib(show=True)
         self.strategy = tf.distribute.MirroredStrategy()
@@ -144,11 +144,23 @@ class Runner:
         """
         raise NotImplementedError
 
-    def _validate_required_flags(self):
+    @property
+    def support_amp(self):
+        """ boolean, default False, please claim your runner with True when you support the AMP feature.
+        """
+        return False
+
+    def _validate_flags(self):
+        # validate required_flags
         if self.required_flags is not None:
             for key in self.required_flags:
                 if FLAGS.flag_values_dict()[key] is None:
                     raise ValueError('FLAGS.{} should not be None'.format(key))
+        # validate features
+        if FLAGS.amp and not self.support_amp:
+            raise ValueError(
+                'FLAGS.amp should not be True, the running runner haven\'t supported amp yet, or the runner didn\'t define class property support_amp=True (default=False)'
+                .format(key))
 
     def evaluate(self, dataset=None):
         """ inference on single gpu only

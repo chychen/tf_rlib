@@ -1,6 +1,7 @@
 import tensorflow as tf
+from tensorflow.keras.mixed_precision import experimental as mixed_precision
 from tf_rlib.models import ResNet_Cifar10
-from tf_rlib.runners import runner
+from tf_rlib.runners.base import runner
 from tf_rlib.datasets import Cifar10
 from absl import flags
 from absl import logging
@@ -50,6 +51,9 @@ class ClassificationResNet18Cifar10(runner.Runner):
             from_logits=True,
             reduction=tf.keras.losses.Reduction.NONE)  # distributed-aware
         self.optim = tf.keras.optimizers.SGD(0.0, 0.9, nesterov=True)
+        if FLAGS.amp:
+            self.optim = mixed_precision.LossScaleOptimizer(
+                self.optim, loss_scale='dynamic')
         return {'resnet': self.model}, train_metrics, valid_metrics
 
     def begin_epoch_callback(self, epoch_id, epochs):
@@ -77,9 +81,18 @@ class ClassificationResNet18Cifar10(runner.Runner):
                 loss, global_batch_size=FLAGS.bs)  # distributed-aware
             regularization_loss = tf.nn.scale_regularization_loss(
                 tf.math.add_n(self.model.losses))  # distributed-aware
-            total_loss = loss + regularization_loss
+            if FLAGS.amp:
+                regularization_loss = tf.cast(regularization_loss, tf.float16)
+                total_loss = loss + regularization_loss
+                total_loss = self.optim.get_scaled_loss(total_loss)
+            else:
+                total_loss = loss + regularization_loss
 
-        grads = tape.gradient(total_loss, self.model.trainable_weights)
+        if FLAGS.amp:
+            grads = tape.gradient(total_loss, self.model.trainable_weights)
+            grads = self.optim.get_unscaled_gradients(grads)
+        else:
+            grads = tape.gradient(total_loss, self.model.trainable_weights)
         self.optim.apply_gradients(zip(grads, self.model.trainable_weights))
         probs = tf.nn.softmax(logits)
         return {'loss': [loss], 'acc': [y, probs]}
@@ -105,3 +118,7 @@ class ClassificationResNet18Cifar10(runner.Runner):
     @property
     def required_flags(self):
         pass
+
+    @property
+    def support_amp(self):
+        return True
