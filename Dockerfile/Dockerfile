@@ -1,4 +1,4 @@
-FROM tensorflow/tensorflow:latest-gpu-py3-jupyter 
+FROM tensorflow/tensorflow:latest-gpu-py3
 
 RUN apt update --fix-missing
 RUN apt install -y vim git screen wget
@@ -13,7 +13,7 @@ RUN conda --version
 RUN conda install -y -c rapidsai -c nvidia -c conda-forge \
     -c defaults rapids=0.11 python=3.6
 # jupyter
-RUN pip install jupyterlab
+RUN pip install jupyterlab jupyter_http_over_ws
 RUN pip install ipywidgets
 RUN jupyter nbextension enable --py widgetsnbextension
 RUN curl -sL https://deb.nodesource.com/setup_11.x | bash -
