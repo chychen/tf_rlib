@@ -2,6 +2,7 @@ import os
 import shutil
 import tensorflow as tf
 from absl import flags, logging
+from tensorflow.keras.mixed_precision import experimental as mixed_precision
 
 FLAGS = flags.FLAGS
 LOGGER = logging.get_absl_logger()
@@ -49,6 +50,24 @@ def set_xla(enable):
     tf.config.optimizer.set_jit(FLAGS.xla)
 
 
+def set_amp(enable):
+    FLAGS.amp = enable
+    if FLAGS.amp:
+        policy = mixed_precision.Policy('mixed_float16')
+        LOGGER.info(
+            'Kindly Reminder: mixed_precision enables you train model with double batch size and learning rate!!!'
+        )
+        LOGGER.info(
+            'General rules of thumb: Dimensions (batch, channels, image size, dense nodes) in multiples of 8 If not, Tensor Cores probably still work, but might involve padding (less efficient) Dimensions < 256, use power of 2 Batch size (depending on model) might be optimal, please ref: https://docs.nvidia.com/deeplearning/sdk/dl-performance-guide/index.html#perf-guidelines'
+        )
+    else:
+        policy = mixed_precision.Policy('float32')
+
+    mixed_precision.set_policy(policy)
+    LOGGER.warn('Compute dtype: {}'.format(policy.compute_dtype))
+    LOGGER.warn('Variable dtype: {}'.format(policy.variable_dtype))
+
+
 def init_tf_rlib(show=False, first=False):
     """
     first(bool): if True, some flags and in first time should be checked, such as log_path save_path. 
@@ -79,9 +98,10 @@ def init_tf_rlib(show=False, first=False):
     # envs
     if FLAGS.gpus is not None:
         os.environ["CUDA_VISIBLE_DEVICES"] = FLAGS.gpus
-    # enable XLA
-    tf.keras.backend.clear_session()
-    tf.config.optimizer.set_jit(FLAGS.xla)
+    # AMP
+    set_amp(FLAGS.amp)
+    # XLA
+    set_xla(FLAGS.xla)
 
     if show:
         ## show all FLAGS
