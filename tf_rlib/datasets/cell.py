@@ -7,15 +7,16 @@ from absl import flags, logging
 FLAGS = flags.FLAGS
 LOGGER = logging.get_absl_logger()
 
+
 class Cell_segmentation(datasets.Dataset):
     def __init__(self, path='/mount/data/SegBenchmark/medical/cell/'):
         self.path = path
         super(Cell_segmentation, self).__init__()
         self.tf_dsets = self._get_dsets()
-        
+
     def get_data(self):
         return self.tf_dsets
-    
+
     def _get_dsets(self):
         X = np.load(self.path + 'train/X.npy')
         Y = np.load(self.path + 'train/Y.npy')[..., None]
@@ -28,8 +29,8 @@ class Cell_segmentation(datasets.Dataset):
         train_data_x = (train_data_x - mean) / stddev
         valid_data_x = (valid_data_x - mean) / stddev
         logging.info('mean:{}, std:{}'.format(mean, stddev))
-        logging.info('data size:{}, label size"{}'.format(train_data_x.shape,
-                                                          train_data_y.shape))
+        logging.info('data size:{}, label size"{}'.format(
+            train_data_x.shape, train_data_y.shape))
 
         @tf.function
         def augmentation(x, y, pad=4):
