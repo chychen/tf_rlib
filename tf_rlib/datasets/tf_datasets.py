@@ -178,7 +178,7 @@ class Omniglot(datasets.Dataset):
             plt.imshow(q[n, 0, k][..., 0], cmap='gray')
 
 
-class Cifar10(datasets.Dataset):
+class Cifar10Numpy(datasets.Dataset):
     def __init__(self):
         super(Cifar10, self).__init__()
         self.tf_dsets = self._get_dsets()
@@ -222,15 +222,172 @@ class Cifar10(datasets.Dataset):
                 buffer_size=tf.data.experimental.AUTOTUNE)
         return [train_dataset, valid_dataset]
 
+    # batchwise is slower in this augmentation
+    @tf.function
+    def augmentation(x, y, pad=4):
+        bs = tf.shape(x)[0]
+        cropped_x = tf.pad(x, [[0, 0], [pad, pad], [pad, pad], [0, 0]])
+        cropped_x = tf.image.random_crop(x, [bs, 32, 32, 3])
+        choice_crop = tf.random.uniform(shape=[bs, 1, 1, 1],
+                                        minval=0.0,
+                                        maxval=1.0)
+        x = tf.where(tf.less(choice_crop, 0.5), cropped_x, x)
+        choice_flip = tf.random.uniform(shape=[bs, 1, 1, 1],
+                                        minval=0.0,
+                                        maxval=1.0)
+        x = tf.where(tf.less(choice_flip, 0.5),
+                     tf.image.random_flip_left_right(x), x)
+        return x, y
 
-#     # batchwise is slower in this augmentation
-#     @tf.function
-#     def augmentation(x, y, pad=4):
-#         bs = tf.shape(x)[0]
-#         cropped_x = tf.pad(x, [[0, 0], [pad, pad], [pad, pad], [0, 0]])
-#         cropped_x = tf.image.random_crop(x, [bs, 32, 32, 3])
-#         choice_crop = tf.random.uniform(shape=[bs, 1, 1, 1], minval=0.0, maxval=1.0)
-#         x = tf.where(tf.less(choice_crop, 0.5), cropped_x, x)
-#         choice_flip = tf.random.uniform(shape=[bs, 1, 1, 1], minval=0.0, maxval=1.0)
-#         x = tf.where(tf.less(choice_flip, 0.5), tf.image.random_flip_left_right(x), x)
-#         return x, y
+
+# TODO: @warren please help to rewrite the function obeying the template class datasets.Dataset
+def get_cell(path='/mount/data/SegBenchmark/medical/cell/'):
+    X = np.load(path + 'train/X.npy')
+    Y = np.load(path + 'train/Y.npy')[..., None]
+    Y = to_categorical(Y, 2)
+    train_data_x, valid_data_x = X[:int(len(X) * .8)], X[int(len(X) * .8):]
+    train_data_y, valid_data_y = Y[:int(len(X) * .8)], Y[int(len(X) * .8):]
+
+    mean = train_data_x.mean(axis=(0, 1, 2))
+    stddev = train_data_x.std(axis=(0, 1, 2))
+    train_data_x = (train_data_x - mean) / stddev
+    valid_data_x = (valid_data_x - mean) / stddev
+    logging.info('mean:{}, std:{}'.format(mean, stddev))
+    logging.info('data size:{}, label size"{}'.format(train_data_x.shape,
+                                                      train_data_y.shape))
+
+    @tf.function
+    def augmentation(x, y, pad=4):
+        flip = tf.random.uniform([1], 0, 1)[0]
+        # random flip
+        if flip > .67:
+            x = tf.image.flip_up_down(x)
+            y = tf.image.flip_up_down(y)
+        elif flip > .33:
+            x = tf.image.flip_left_right(x)
+            y = tf.image.flip_left_right(y)
+        else:
+            pass
+
+        return x, y
+
+    train_dataset = tf.data.Dataset.from_tensor_slices(
+        (train_data_x, train_data_y))
+    valid_dataset = tf.data.Dataset.from_tensor_slices(
+        (valid_data_x, valid_data_y))
+    train_dataset = train_dataset.map(
+        augmentation,
+        num_parallel_calls=tf.data.experimental.AUTOTUNE).cache().shuffle(
+            300).batch(FLAGS.bs, drop_remainder=True).prefetch(
+                buffer_size=tf.data.experimental.AUTOTUNE)
+    valid_dataset = valid_dataset.cache().batch(
+        FLAGS.bs, drop_remainder=False).prefetch(
+            buffer_size=tf.data.experimental.AUTOTUNE)
+    return [train_dataset, valid_dataset]
+
+
+class Cifar10(datasets.Dataset):
+    def __init__(self):
+        super(Cifar10, self).__init__()
+
+        self.train_file = '/ws_data/tmp/cifar10/train.tfrecords'
+        self.valid_file = '/ws_data/tmp/cifar10/valid.tfrecords'
+        if not os.path.exists('/ws_data/tmp/cifar10/train.tfrecords'):
+            os.makedirs('/ws_data/tmp/cifar10')
+
+            train_np, valid_np = self._get_np_dsets()
+            with tf.io.TFRecordWriter(self.train_file) as writer:
+                for image, label in tqdm(zip(*train_np), total=50000):
+                    image_string = image.tobytes()
+                    tf_example = self.image_example(image_string, label)
+                    writer.write(tf_example.SerializeToString())
+
+            with tf.io.TFRecordWriter(self.valid_file) as writer:
+                for image, label in tqdm(zip(*valid_np), total=10000):
+                    image_string = image.tobytes()
+                    tf_example = self.image_example(image_string, label)
+                    writer.write(tf_example.SerializeToString())
+
+        self.tf_dsets = self._get_tf_dsets()
+
+    # Create a dictionary with features that may be relevant.
+    def image_example(self, image_string, label):
+        def _bytes_feature(value):
+            """Returns a bytes_list from a string / byte."""
+            if isinstance(value, type(tf.constant(0))):
+                value = value.numpy(
+                )  # BytesList won't unpack a string from an EagerTensor.
+            return tf.train.Feature(bytes_list=tf.train.BytesList(
+                value=[value]))
+
+        def _int64_feature(value):
+            """Returns an int64_list from a bool / enum / int / uint."""
+            return tf.train.Feature(int64_list=tf.train.Int64List(
+                value=[value]))
+
+        feature = {
+            'label': _int64_feature(label),
+            'image_raw': _bytes_feature(image_string)
+        }
+        return tf.train.Example(features=tf.train.Features(feature=feature))
+
+    def get_data(self):
+        return self.tf_dsets
+
+    def _get_np_dsets(self):
+        train_data, valid_data = tf.keras.datasets.cifar10.load_data()
+        train_data_x = train_data[0].astype(np.float32)
+        valid_data_x = valid_data[0].astype(np.float32)
+        mean = train_data_x.mean(axis=(0, 1, 2))
+        stddev = train_data_x.std(axis=(0, 1, 2))
+        train_data_x = (train_data_x - mean) / stddev
+        valid_data_x = (valid_data_x - mean) / stddev
+        if FLAGS.amp:
+            train_data_x = train_data_x.astype(np.float16)
+            valid_data_x = valid_data_x.astype(np.float16)
+        train_data_y = train_data[1]
+        valid_data_y = valid_data[1]
+        return (train_data_x, train_data_y), (valid_data_x, valid_data_y)
+
+    def _get_tf_dsets(self):
+        # Create a dictionary describing the features.
+        image_feature_description = {
+            'label': tf.io.FixedLenFeature([], tf.int64),
+            'image_raw': tf.io.FixedLenFeature([], tf.string),
+        }
+
+        @tf.function
+        def augmentation(example_proto, pad=4):
+            # Parse the input tf.Example proto using the dictionary above.
+            example = tf.io.parse_single_example(example_proto,
+                                                 image_feature_description)
+            x = tf.io.decode_raw(example['image_raw'], tf.float32)
+            x = tf.reshape(x, [32, 32, 3])
+            x = tf.image.resize_with_crop_or_pad(x, 32 + pad * 2, 32 + pad * 2)
+            x = tf.image.random_crop(x, [32, 32, 3])
+            x = tf.image.random_flip_left_right(x)
+            return x, example['label']
+
+        @tf.function
+        def parse(example_proto):
+            # Parse the input tf.Example proto using the dictionary above.
+            example = tf.io.parse_single_example(example_proto,
+                                                 image_feature_description)
+            x = tf.io.decode_raw(example['image_raw'], tf.float32)
+            x = tf.reshape(x, [32, 32, 3])
+            return x, example['label']
+
+        train_dataset = tf.data.TFRecordDataset(self.train_file)
+        train_dataset = train_dataset.map(
+            augmentation,
+            num_parallel_calls=tf.data.experimental.AUTOTUNE).cache().shuffle(
+                50000).batch(FLAGS.bs, drop_remainder=True).prefetch(
+                    buffer_size=tf.data.experimental.AUTOTUNE)
+
+        valid_dataset = tf.data.TFRecordDataset(self.valid_file)
+        valid_dataset = valid_dataset.map(
+            parse,
+            num_parallel_calls=tf.data.experimental.AUTOTUNE).cache().batch(
+                FLAGS.bs, drop_remainder=False).prefetch(
+                    buffer_size=tf.data.experimental.AUTOTUNE)
+        return [train_dataset, valid_dataset]
