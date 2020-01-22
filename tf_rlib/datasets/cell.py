@@ -8,7 +8,7 @@ FLAGS = flags.FLAGS
 LOGGER = logging.get_absl_logger()
 
 
-class Cell_segmentation(datasets.Dataset):
+class CellSegmentation(datasets.Dataset):
     '''
     Mount point: Warren_datasets/SegBenchmark/medical/cell/
     '''

@@ -22,16 +22,10 @@ class NVBump(datasets.Dataset):
 
     def _get_dsets(self):
         # load data
-        X_defect = np.load(
-            self.path+'X_defect.npy')[:, 172:428,
-                                                               172:428]
-        X_pass = np.load(
-            self.path+'X_pass.npy')[:, 172:428,
-                                                             172:428]
-        X_defect_valid = np.load(
-            self.path+'X_defect_val.npy')
-        X_pass_valid = np.load(
-            self.path+'X_pass_val.npy')
+        X_defect = np.load(self.path + 'X_defect.npy')[:, 172:428, 172:428]
+        X_pass = np.load(self.path + 'X_pass.npy')[:, 172:428, 172:428]
+        X_defect_valid = np.load(self.path + 'X_defect_val.npy')
+        X_pass_valid = np.load(self.path + 'X_pass_val.npy')
         # Spilt more data to be validated
         idx = np.arange(len(X_defect))
         np.random.shuffle(idx)
@@ -91,4 +85,5 @@ class NVBump(datasets.Dataset):
             for _ in range(len(X_d) // FLAGS.bs):
                 x, y = self.sample_data(X_d, X_p, idx_d, idx_p)
                 yield x, y.astype('float32')
+
         return gen
