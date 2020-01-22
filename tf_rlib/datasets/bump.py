@@ -9,6 +9,9 @@ LOGGER = logging.get_absl_logger()
 
 
 class NVBump(datasets.Dataset):
+    '''
+    Mount point: Warren_datasets/SPIL/data/preprocessed/
+    '''
     def __init__(self, path='/mount/data/SPIL/data/preprocessed/'):
         self.path = path
         super(NVBump, self).__init__()
@@ -20,15 +23,15 @@ class NVBump(datasets.Dataset):
     def _get_dsets(self):
         # load data
         X_defect = np.load(
-            '/mount/data/SPIL/Data/preprocessed/X_defect.npy')[:, 172:428,
+            self.path+'X_defect.npy')[:, 172:428,
                                                                172:428]
         X_pass = np.load(
-            '/mount/data/SPIL/Data/preprocessed/X_pass.npy')[:, 172:428,
+            self.path+'X_pass.npy')[:, 172:428,
                                                              172:428]
         X_defect_valid = np.load(
-            '/mount/data/SPIL/Data/preprocessed/X_defect_val.npy')
+            self.path+'X_defect_val.npy')
         X_pass_valid = np.load(
-            '/mount/data/SPIL/Data/preprocessed/X_pass_val.npy')
+            self.path+'X_pass_val.npy')
         # Spilt more data to be validated
         idx = np.arange(len(X_defect))
         np.random.shuffle(idx)
@@ -68,13 +71,13 @@ class NVBump(datasets.Dataset):
         X = tf.keras.preprocessing.image.random_brightness(X, (.8, 1.2))
         return X
 
-    def sample_data(self, X_d, X_p):
-        np.random.shuffle(self.idx_d)
-        np.random.shuffle(self.idx_p)
+    def sample_data(self, X_d, X_p, idx_d, idx_p):
+        np.random.shuffle(idx_d)
+        np.random.shuffle(idx_p)
         x, y = [], []
         for i in range(FLAGS.bs // 2):
-            xp = X_p[self.idx_p[i]]
-            xd = X_d[self.idx_d[i]]
+            xp = X_p[idx_p[i]]
+            xd = X_d[idx_d[i]]
             xp = (self.augment(xp) - 127.5) / 127.5
             xd = (self.augment(xd) - 127.5) / 127.5
             x += [xp, xd]
@@ -83,10 +86,9 @@ class NVBump(datasets.Dataset):
 
     def get_generator(self, X_d, X_p):
         def gen():
-            self.idx_d = np.arange(len(X_d))
-            self.idx_p = np.arange(len(X_p))
+            idx_d = np.arange(len(X_d))
+            idx_p = np.arange(len(X_p))
             for _ in range(len(X_d) // FLAGS.bs):
-                x, y = self.sample_data(X_d, X_p)
+                x, y = self.sample_data(X_d, X_p, idx_d, idx_p)
                 yield x, y.astype('float32')
-
         return gen

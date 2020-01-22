@@ -9,6 +9,9 @@ LOGGER = logging.get_absl_logger()
 
 
 class Cell_segmentation(datasets.Dataset):
+    '''
+    Mount point: Warren_datasets/SegBenchmark/medical/cell/
+    '''
     def __init__(self, path='/mount/data/SegBenchmark/medical/cell/'):
         self.path = path
         super(Cell_segmentation, self).__init__()
