@@ -1,12 +1,10 @@
 import tensorflow as tf
 from tf_rlib import layers, blocks, models
 from absl import flags, logging
+from functools import reduce
 
 FLAGS = flags.FLAGS
 LOGGER = logging.get_absl_logger()
-
-import tensorflow as tf
-from tf_rlib import layers, blocks
 
 
 class AE(models.Model):
