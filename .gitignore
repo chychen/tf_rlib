@@ -1,5 +1,6 @@
 exp/
 *.index
+*.tfrecords
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
