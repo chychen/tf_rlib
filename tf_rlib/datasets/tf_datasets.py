@@ -180,7 +180,7 @@ class Omniglot(datasets.Dataset):
 
 class Cifar10Numpy(datasets.Dataset):
     def __init__(self):
-        super(Cifar10, self).__init__()
+        super(Cifar10Numpy, self).__init__()
         self.tf_dsets = self._get_dsets()
 
     def get_data(self):
@@ -203,9 +203,17 @@ class Cifar10Numpy(datasets.Dataset):
 
         @tf.function
         def augmentation(x, y, pad=4):
+            x = tf.cast(x, tf.float32)
+            x = (x - mean) / stddev
             x = tf.image.resize_with_crop_or_pad(x, 32 + pad * 2, 32 + pad * 2)
             x = tf.image.random_crop(x, [32, 32, 3])
             x = tf.image.random_flip_left_right(x)
+            return x, y
+
+        @tf.function
+        def normalize(x, y, pad=4):
+            x = tf.cast(x, tf.float32)
+            x = (x - mean) / stddev
             return x, y
 
         train_dataset = tf.data.Dataset.from_tensor_slices(
@@ -287,14 +295,22 @@ def get_cell(path='/mount/data/SegBenchmark/medical/cell/'):
 
 
 class Cifar10(datasets.Dataset):
+    """ use tfrecords could speed-up 5%~15% comparing to numpy. because tfrecords format only use 50% space than numpy.
+    """
     def __init__(self):
         super(Cifar10, self).__init__()
+        self.dtype = np.float16 if FLAGS.amp else np.float32
+        save_path = '/ws_data/tmp/cifar10'
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+        if FLAGS.amp:
+            self.train_file = os.path.join(save_path, 'train16.tfrecords')
+            self.valid_file = os.path.join(save_path, 'valid16.tfrecords')
+        else:
+            self.train_file = os.path.join(save_path, 'train32.tfrecords')
+            self.valid_file = os.path.join(save_path, 'valid32.tfrecords')
 
-        self.train_file = '/ws_data/tmp/cifar10/train.tfrecords'
-        self.valid_file = '/ws_data/tmp/cifar10/valid.tfrecords'
-        if not os.path.exists('/ws_data/tmp/cifar10/train.tfrecords'):
-            os.makedirs('/ws_data/tmp/cifar10')
-
+        if not os.path.exists(self.train_file):
             train_np, valid_np = self._get_np_dsets()
             with tf.io.TFRecordWriter(self.train_file) as writer:
                 for image, label in tqdm(zip(*train_np), total=50000):
@@ -342,9 +358,8 @@ class Cifar10(datasets.Dataset):
         stddev = train_data_x.std(axis=(0, 1, 2))
         train_data_x = (train_data_x - mean) / stddev
         valid_data_x = (valid_data_x - mean) / stddev
-        if FLAGS.amp:
-            train_data_x = train_data_x.astype(np.float16)
-            valid_data_x = valid_data_x.astype(np.float16)
+        train_data_x = train_data_x.astype(self.dtype)
+        valid_data_x = valid_data_x.astype(self.dtype)
         train_data_y = train_data[1]
         valid_data_y = valid_data[1]
         return (train_data_x, train_data_y), (valid_data_x, valid_data_y)
@@ -358,10 +373,9 @@ class Cifar10(datasets.Dataset):
 
         @tf.function
         def augmentation(example_proto, pad=4):
-            # Parse the input tf.Example proto using the dictionary above.
             example = tf.io.parse_single_example(example_proto,
                                                  image_feature_description)
-            x = tf.io.decode_raw(example['image_raw'], tf.float32)
+            x = tf.io.decode_raw(example['image_raw'], self.dtype)
             x = tf.reshape(x, [32, 32, 3])
             x = tf.image.resize_with_crop_or_pad(x, 32 + pad * 2, 32 + pad * 2)
             x = tf.image.random_crop(x, [32, 32, 3])
@@ -370,10 +384,9 @@ class Cifar10(datasets.Dataset):
 
         @tf.function
         def parse(example_proto):
-            # Parse the input tf.Example proto using the dictionary above.
             example = tf.io.parse_single_example(example_proto,
                                                  image_feature_description)
-            x = tf.io.decode_raw(example['image_raw'], tf.float32)
+            x = tf.io.decode_raw(example['image_raw'], self.dtype)
             x = tf.reshape(x, [32, 32, 3])
             return x, example['label']
 

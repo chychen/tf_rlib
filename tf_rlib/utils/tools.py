@@ -51,22 +51,21 @@ def set_xla(enable):
 
 
 def set_amp(enable):
-    if FLAGS.amp != enable:
-        FLAGS.amp = enable
-        if FLAGS.amp:
-            policy = mixed_precision.Policy('mixed_float16')
-            LOGGER.info(
-                'Kindly Reminder: mixed_precision enables you train model with double batch size and learning rate!!!'
-            )
-            LOGGER.info(
-                'General rules of thumb: Dimensions (batch, channels, image size, dense nodes) in multiples of 8 If not, Tensor Cores probably still work, but might involve padding (less efficient) Dimensions < 256, use power of 2 Batch size (depending on model) might be optimal, please ref: https://docs.nvidia.com/deeplearning/sdk/dl-performance-guide/index.html#perf-guidelines'
-            )
-        else:
-            policy = mixed_precision.Policy('float32')
+    FLAGS.amp = enable
+    if FLAGS.amp:
+        policy = mixed_precision.Policy('mixed_float16')
+        LOGGER.info(
+            'Kindly Reminder: mixed_precision enables you train model with double batch size and learning rate!!!'
+        )
+        LOGGER.info(
+            'General rules of thumb: Dimensions (batch, channels, image size, dense nodes) in multiples of 8 If not, Tensor Cores probably still work, but might involve padding (less efficient) Dimensions < 256, use power of 2 Batch size (depending on model) might be optimal, please ref: https://docs.nvidia.com/deeplearning/sdk/dl-performance-guide/index.html#perf-guidelines'
+        )
+    else:
+        policy = mixed_precision.Policy('float32')
 
-        mixed_precision.set_policy(policy)
-        LOGGER.warn('Compute dtype: {}'.format(policy.compute_dtype))
-        LOGGER.warn('Variable dtype: {}'.format(policy.variable_dtype))
+    mixed_precision.set_policy(policy)
+    LOGGER.warn('Compute dtype: {}'.format(policy.compute_dtype))
+    LOGGER.warn('Variable dtype: {}'.format(policy.variable_dtype))
 
 
 def init_tf_rlib(show=False, first=False):
