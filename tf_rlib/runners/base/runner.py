@@ -23,6 +23,9 @@ class Runner:
     - validate_step() 
     - required_flags()
     
+    # optional features: default False, please overwrite it to return True if the inheritted runner supports the features.
+    - support_amp()
+    
     """
     def __init__(self, train_dataset, valid_dataset=None, best_state=None):
         """
