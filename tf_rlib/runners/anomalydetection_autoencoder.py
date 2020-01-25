@@ -18,7 +18,7 @@ class ADAERunner(runner.Runner):
     def __init__(self, train_dataset, valid_dataset=None):
         super(ADAERunner, self).__init__(train_dataset,
                                          valid_dataset=valid_dataset,
-                                         best_state='mae')
+                                         best_state='loss')
 
     def init(self):
         self.model = AE()

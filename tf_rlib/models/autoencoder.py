@@ -1,12 +1,10 @@
 import tensorflow as tf
 from tf_rlib import layers, blocks, models
 from absl import flags, logging
+from functools import reduce
 
 FLAGS = flags.FLAGS
 LOGGER = logging.get_absl_logger()
-
-import tensorflow as tf
-from tf_rlib import layers, blocks
 
 
 class AE(models.Model):
@@ -68,7 +66,6 @@ class AE(models.Model):
                                       preact=True,
                                       use_norm=True,
                                       use_act=True)
-        self.tanh = tf.keras.layers.Activation(tf.keras.activations.tanh)
 
     def call(self, x):
         x = self.head(x)
@@ -78,5 +75,4 @@ class AE(models.Model):
         latent_code = self.latent_encoder(x)
         out = self.decoder(latent_code)
         out = self.tail(out)
-        out = self.tanh(out)
         return latent_code, out
