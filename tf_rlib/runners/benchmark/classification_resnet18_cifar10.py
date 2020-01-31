@@ -64,7 +64,7 @@ class ClassificationResNet18Cifar10(runner.Runner):
         elif epoch_id >= 225:
             self.optim.lr = 1e-3
 
-        self.log_scalar('lr', self.optim.lr, epoch_id, training=True)
+        self.log_scalar('lr', self.optim.lr, training=True)
 
     def train_step(self, x, y):
         """

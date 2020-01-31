@@ -59,12 +59,9 @@ class RegressionRunner(runner.Runner):
             self.lr_scheduler.decay_steps = epochs
             self.optim.learning_rate = self.lr_scheduler(epoch_id)
 
-        self.log_scalar('lr',
-                        self.optim.learning_rate,
-                        epoch_id,
-                        training=True)
+        self.log_scalar('lr', self.optim.learning_rate, training=True)
         self.optim.weight_decay = FLAGS.wd * self.optim.learning_rate / self.init_lr
-        self.log_scalar('wd', self.optim.weight_decay, epoch_id, training=True)
+        self.log_scalar('wd', self.optim.weight_decay, training=True)
 
     def train_step(self, x, y):
         """

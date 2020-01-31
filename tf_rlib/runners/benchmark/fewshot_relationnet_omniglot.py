@@ -79,10 +79,7 @@ class FewShotRelationNetOmniglot(runner.Runner):
 
     def begin_epoch_callback(self, epoch_id, epochs):
         self.optim.learning_rate = self.learning_rate_fn(epoch_id)
-        self.log_scalar('lr',
-                        self.optim.learning_rate,
-                        epoch_id,
-                        training=True)
+        self.log_scalar('lr', self.optim.learning_rate, training=True)
 
     def train_step(self, x, y):
         """

@@ -41,8 +41,8 @@ class Runner:
         LOGGER.info('Number of devices: {}'.format(
             self.strategy.num_replicas_in_sync))
 
-        self.epoch = 0
-        self.step = 0
+        self.global_epoch = 0
+        self.global_step = 0
         self.save_path = FLAGS.save_path
         self.best_state = best_state
         self.metrics_manager = MetricsManager(best_state)
@@ -184,6 +184,7 @@ class Runner:
         pass
 
     def fit(self, epochs, lr):
+        global_total_epochs = self.global_epoch + epochs
         with self._get_strategy_ctx():
             self.begin_fit_callback(lr)
             train_pbar = tqdm(desc='train', leave=False, dynamic_ncols=True)
@@ -192,8 +193,8 @@ class Runner:
                 train_num_batch = 0
                 valid_num_batch = 0
                 first_e_timer = time.time()
-                self.begin_epoch_callback(self.epoch, epochs)
-                self.epoch = self.epoch + 1
+                self.begin_epoch_callback(e_idx, epochs)
+                self.global_epoch = self.global_epoch + 1
                 # progress bars
                 train_pbar.reset()
                 valid_pbar.reset()
@@ -201,7 +202,7 @@ class Runner:
                 # train one epoch
                 for train_num_batch, (x_batch, y_batch) in enumerate(
                         self.train_dataset):
-                    self.step = self.step + 1
+                    self.global_step = self.global_step + 1
                     # train one step
                     if FLAGS.profile:
                         with profiler.Profiler(
@@ -210,8 +211,10 @@ class Runner:
                     else:
                         self._train_step(x_batch, y_batch)
                     train_pbar.update(1)
-                    train_pbar.set_postfix(
-                        {'epoch/total': '{}/{}'.format(self.epoch, epochs)})
+                    train_pbar.set_postfix({
+                        'epoch/total':
+                        '{}/{}'.format(self.global_epoch, global_total_epochs)
+                    })
                 self._log_data(x_batch, y_batch, training=True)
 
                 # validate one epoch
@@ -223,15 +226,15 @@ class Runner:
                         valid_pbar.update(1)
                     if self.metrics_manager.is_better_state():
                         self.save_best()
-                        valid_pbar.set_postfix({
-                            'best epoch':
-                            self.epoch,
-                            self.best_state:
-                            self.metrics_manager.best_record
-                        })
+                    valid_pbar.set_postfix({
+                        'best epoch':
+                        self.global_epoch,
+                        self.best_state:
+                        self.metrics_manager.best_record
+                    })
                     self._log_data(x_batch, y_batch, training=False)
 
-                if self.epoch == 1:
+                if self.global_epoch == 1:
                     LOGGER.warn('')  # new line
                     LOGGER.warn('Time cost for first epoch: {} sec'.format(
                         time.time() - first_e_timer))
@@ -240,19 +243,20 @@ class Runner:
                     valid_num_batch = valid_num_batch + 1
                     self.metrics_manager.set_num_batch(train_num_batch,
                                                        valid_num_batch)
-                    train_pbar.close()
-                    valid_pbar.close()
-                    train_pbar = tqdm(desc='train',
-                                      leave=False,
-                                      dynamic_ncols=True,
-                                      total=train_num_batch)
-                    valid_pbar = tqdm(desc='valid',
-                                      leave=False,
-                                      dynamic_ncols=True,
-                                      total=valid_num_batch)
+                    if epochs > 1:
+                        train_pbar.close()
+                        valid_pbar.close()
+                        train_pbar = tqdm(desc='train',
+                                          leave=False,
+                                          dynamic_ncols=True,
+                                          total=train_num_batch)
+                        valid_pbar = tqdm(desc='valid',
+                                          leave=False,
+                                          dynamic_ncols=True,
+                                          total=valid_num_batch)
 
                 # logging
-                self.metrics_manager.show_message(self.epoch)
+                self.metrics_manager.show_message(self.global_epoch)
             self.metrics_manager.register_hparams()
 
     def save(self, path):
@@ -269,11 +273,11 @@ class Runner:
     def load_best(self):
         self.load(os.path.join(self.save_path, 'best'))
 
-    def log_scalar(self, name, value, step, training):
+    def log_scalar(self, name, value, training):
         key = MetricsManager.KEY_TRAIN if training else MetricsManager.KEY_VALID
         self.metrics_manager.add_scalar(name,
                                         value,
-                                        step,
+                                        self.global_epoch,
                                         key,
                                         tag=MetricsManager.TAG_HPARAMS)
 
@@ -330,27 +334,27 @@ class Runner:
                     if len(
                             sub_batch.shape
                     ) == 4 and sub_batch.shape[-1] <= 4:  # [b, w, h, c], c<4
-                        self.metrics_manager.show_image(sub_batch,
-                                                        key,
-                                                        epoch=self.epoch,
-                                                        name=name +
-                                                        '_tuple_{}'.format(i))
+                        self.metrics_manager.show_image(
+                            sub_batch,
+                            key,
+                            epoch=self.global_epoch,
+                            name=name + '_tuple_{}'.format(i))
                     # few-shot
                     few_shot_name = ['support', 'query']
                     if len(sub_batch.shape) == 7 and sub_batch.shape[
                             -1] <= 4:  # [b, q, c, k, w, h, c], c<4
                         sub_batch = tf.reshape(sub_batch,
                                                [-1, *sub_batch.shape[-3:]])
-                        self.metrics_manager.show_image(sub_batch,
-                                                        key,
-                                                        epoch=self.epoch,
-                                                        name=name + '_' +
-                                                        few_shot_name[i])
+                        self.metrics_manager.show_image(
+                            sub_batch,
+                            key,
+                            epoch=self.global_epoch,
+                            name=name + '_' + few_shot_name[i])
             else:
                 if len(
                         batch_local.shape
                 ) == 4 and batch_local.shape[-1] <= 4:  # [b, w, h, c], c<4
                     self.metrics_manager.show_image(batch_local,
                                                     key,
-                                                    epoch=self.epoch,
+                                                    epoch=self.global_epoch,
                                                     name=name)
