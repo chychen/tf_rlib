@@ -19,6 +19,9 @@ RUN jupyter nbextension enable --py widgetsnbextension
 RUN curl -sL https://deb.nodesource.com/setup_11.x | bash -
 RUN apt install -y nodejs
 RUN jupyter labextension install @jupyter-widgets/jupyterlab-manager
+# jupyterlab-nvdashboard
+RUN pip install jupyterlab-nvdashboard
+RUN jupyter labextension install jupyterlab-nvdashboard
 
 RUN pip install tqdm sklearn yapf pytz tensorflow_datasets tensorflow-addons pandas seaborn pillow
 
