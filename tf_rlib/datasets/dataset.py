@@ -6,8 +6,7 @@ LOGGER = logging.get_absl_logger()
 
 class Dataset:
     def __init__(self):
-        if FLAGS.bs is None:
-            raise ValueError('FLAGS.bs should not be None')
+        pass
 
     def get_data(self):
         raise NotImplementedError

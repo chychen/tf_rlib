@@ -35,10 +35,9 @@ class Omniglot(datasets.Dataset):
         LOGGER.info('mean: {}, stddev: {}'.format(self.mean, self.std))
         # normalize
         self.np_dset = (self.np_dset - self.mean) / self.std
-        self.data = self._get_tf_dsets(self.np_dset)
 
     def get_data(self):
-        return self.data
+        return self._get_tf_dsets(self.np_dset)
 
     def _get_np_dset(self, img_size, force_update):
         if not os.path.exists(Omniglot.SAVE_PATH):
@@ -181,10 +180,9 @@ class Omniglot(datasets.Dataset):
 class Cifar10Numpy(datasets.Dataset):
     def __init__(self):
         super(Cifar10Numpy, self).__init__()
-        self.tf_dsets = self._get_dsets()
 
     def get_data(self):
-        return self.tf_dsets
+        return self._get_dsets()
 
     def _get_dsets(self):
         train_data, valid_data = tf.keras.datasets.cifar10.load_data()
@@ -247,53 +245,6 @@ class Cifar10Numpy(datasets.Dataset):
                      tf.image.random_flip_left_right(x), x)
         return x, y
 
-
-# TODO: @warren please help to rewrite the function obeying the template class datasets.Dataset
-def get_cell(path='/mount/data/SegBenchmark/medical/cell/'):
-    X = np.load(path + 'train/X.npy')
-    Y = np.load(path + 'train/Y.npy')[..., None]
-    Y = to_categorical(Y, 2)
-    train_data_x, valid_data_x = X[:int(len(X) * .8)], X[int(len(X) * .8):]
-    train_data_y, valid_data_y = Y[:int(len(X) * .8)], Y[int(len(X) * .8):]
-
-    mean = train_data_x.mean(axis=(0, 1, 2))
-    stddev = train_data_x.std(axis=(0, 1, 2))
-    train_data_x = (train_data_x - mean) / stddev
-    valid_data_x = (valid_data_x - mean) / stddev
-    logging.info('mean:{}, std:{}'.format(mean, stddev))
-    logging.info('data size:{}, label size"{}'.format(train_data_x.shape,
-                                                      train_data_y.shape))
-
-    @tf.function
-    def augmentation(x, y, pad=4):
-        flip = tf.random.uniform([1], 0, 1)[0]
-        # random flip
-        if flip > .67:
-            x = tf.image.flip_up_down(x)
-            y = tf.image.flip_up_down(y)
-        elif flip > .33:
-            x = tf.image.flip_left_right(x)
-            y = tf.image.flip_left_right(y)
-        else:
-            pass
-
-        return x, y
-
-    train_dataset = tf.data.Dataset.from_tensor_slices(
-        (train_data_x, train_data_y))
-    valid_dataset = tf.data.Dataset.from_tensor_slices(
-        (valid_data_x, valid_data_y))
-    train_dataset = train_dataset.map(
-        augmentation,
-        num_parallel_calls=tf.data.experimental.AUTOTUNE).cache().shuffle(
-            300).batch(FLAGS.bs, drop_remainder=True).prefetch(
-                buffer_size=tf.data.experimental.AUTOTUNE)
-    valid_dataset = valid_dataset.cache().batch(
-        FLAGS.bs, drop_remainder=False).prefetch(
-            buffer_size=tf.data.experimental.AUTOTUNE)
-    return [train_dataset, valid_dataset]
-
-
 class Cifar10(datasets.Dataset):
     """ use tfrecords could speed-up 5%~15% comparing to numpy. because tfrecords format only use 50% space than numpy.
     """
@@ -324,8 +275,6 @@ class Cifar10(datasets.Dataset):
                     tf_example = self.image_example(image_string, label)
                     writer.write(tf_example.SerializeToString())
 
-        self.tf_dsets = self._get_tf_dsets()
-
     # Create a dictionary with features that may be relevant.
     def image_example(self, image_string, label):
         def _bytes_feature(value):
@@ -348,7 +297,7 @@ class Cifar10(datasets.Dataset):
         return tf.train.Example(features=tf.train.Features(feature=feature))
 
     def get_data(self):
-        return self.tf_dsets
+        return self._get_tf_dsets()
 
     def _get_np_dsets(self):
         train_data, valid_data = tf.keras.datasets.cifar10.load_data()

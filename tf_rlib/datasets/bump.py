@@ -15,10 +15,9 @@ class NVBump(datasets.Dataset):
     def __init__(self, path='/mount/data/SPIL/data/preprocessed/'):
         self.path = path
         super(NVBump, self).__init__()
-        self.dsets = self._get_dsets()
 
     def get_data(self):
-        return self.dsets
+        return self._get_dsets()
 
     def _get_dsets(self):
         # load data

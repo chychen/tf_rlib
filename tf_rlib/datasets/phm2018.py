@@ -73,10 +73,8 @@ class PHM2018(datasets.Dataset):
         if not os.path.exists(self.numpy_path):
             os.makedirs(self.numpy_path)
 
-        self.data = self._get_tfdset()
-
     def get_data(self):
-        return self.data
+        return self._get_tfdset()
 
     def _get_tfdset(self):
         all_big_ttf_x_path = os.path.join(self.numpy_path, 'all_big_ttf_x.npy')

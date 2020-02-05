@@ -15,10 +15,9 @@ class CellSegmentation(datasets.Dataset):
     def __init__(self, path='/mount/data/SegBenchmark/medical/cell/'):
         self.path = path
         super(Cell_segmentation, self).__init__()
-        self.tf_dsets = self._get_dsets()
 
     def get_data(self):
-        return self.tf_dsets
+        return self._get_dsets()
 
     def _get_dsets(self):
         X = np.load(self.path + 'train/X.npy')
