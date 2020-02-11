@@ -4,3 +4,4 @@ from tf_rlib.datasets.cell import CellSegmentation
 from tf_rlib.datasets.mvtec_datasets import MVTecDS
 from tf_rlib.datasets.phm2018 import PHM2018
 from tf_rlib.datasets.bump import NVBump
+from tf_rlib.datasets.udmaa import UDMAA02
