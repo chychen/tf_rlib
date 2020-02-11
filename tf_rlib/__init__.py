@@ -7,7 +7,7 @@ import tensorflow as tf
 from absl import app
 from absl import flags, logging
 from tf_rlib.utils.ipython import isnotebook
-from tf_rlib import blocks, datasets, layers, models, research, runners, utils, metrics, losses
+from tf_rlib import blocks, datasets, layers, models, runners, utils, metrics, losses
 from tf_rlib.utils import init_tf_rlib
 
 # envs
