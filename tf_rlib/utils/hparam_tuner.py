@@ -15,7 +15,7 @@ KEY_NUM_GPUS = 'num_gpus'
 class HParamTuner:
     """
     Example:
-        hpt = HParamTuner(ClassificationRunner, ['0','1','2','3'], tf_rlib.datasets.get_cifar10)
+        hpt = HParamTuner(ClassificationRunner, ['0','1','2','3'], tf_rlib.datasets.Cifar10().get_data)
         hpt(epochs=[100, 200, 300], lr=[1e-2, 1e-3, 1e-3])
     """
     def __init__(self, runner_cls, gpu_ids, dataset_fn):
@@ -87,6 +87,9 @@ class HParamTuner:
                 setattr(FLAGS, k, v)
             else:
                 raise ValueError('--{} not in FLAGS'.format(k))
+        # epochs and lr are required!!
+        if 'lr' not in trial_params or 'epochs' not in trial_params:
+            raise ValueError('--{} not in FLAGS'.format(k))
 
         with session_num.get_lock():
             session_num.value = session_num.value + 1
