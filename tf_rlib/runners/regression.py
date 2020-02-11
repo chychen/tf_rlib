@@ -45,7 +45,7 @@ class RegressionRunner(runner.Runner):
                                           beta_1=FLAGS.adam_beta_1,
                                           beta_2=FLAGS.adam_beta_2,
                                           epsilon=FLAGS.adam_epsilon)
-        return {'PyramidNet': self.model}, train_metrics, valid_metrics
+        return {'PyramidNet': self.model}, None, train_metrics, valid_metrics
 
     def begin_fit_callback(self, lr):
         self.init_lr = lr

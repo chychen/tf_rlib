@@ -52,7 +52,7 @@ class ClassificationPyramidNet272Cifar10(runner.Runner):
             from_logits=True,
             reduction=tf.keras.losses.Reduction.NONE)  # distributed-aware
         self.optim = tf.keras.optimizers.SGD(0.0, 0.9, nesterov=True)
-        return {'pyramidnet': self.model}, train_metrics, valid_metrics
+        return {'pyramidnet': self.model}, None, train_metrics, valid_metrics
 
     def begin_epoch_callback(self, epoch_id, epochs):
         if epoch_id >= 0 and epoch_id < 150:

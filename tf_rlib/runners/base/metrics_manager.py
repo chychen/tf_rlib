@@ -88,13 +88,10 @@ class MetricsManager:
                             img_p_sec, epoch, MetricsManager.KEY_VALID)
 
     def show_image(self, x, key, epoch, name='image'):
-        num_data = x.shape[0]
-        num_vis = 3 if num_data > 3 else num_data
-        idx = np.random.choice(list(range(num_data)), num_vis)
         with self.boards_writer[key].as_default():
-            for i, v in enumerate(idx):
+            for i, v in enumerate(x):
                 tf.summary.image(str(i) + '/' + name,
-                                 x[v:v + 1],
+                                 v[None],
                                  step=epoch,
                                  max_outputs=1)
 
@@ -155,7 +152,7 @@ class MetricsManager:
             return False
 
     def _state_policy_mapper(self, state):
-        if state == 'acc' or state == 'precision' or state == 'recall' or state == 'f1':
+        if state == 'acc' or state == 'precision' or state == 'recall' or state == 'f1' or 'auc' in state:
             return max, float('-inf')
         if state == 'mae' or state == 'mse' or state == 'l1' or state == 'l2' or state == 'loss':
             return min, float('inf')

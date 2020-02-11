@@ -44,28 +44,39 @@ class Runner:
         self.global_epoch = 0
         self.global_step = 0
         self.save_path = FLAGS.save_path
+        self.best_epoch = 0
         self.best_state = best_state
         self.metrics_manager = MetricsManager(best_state)
         self.models_outs_shapes = dict()
 
         with self._get_strategy_ctx():
-            self.models, train_metrics, valid_metrics = self.init()
+            self.models, self.models_inputs_shape, train_metrics, valid_metrics = self.init(
+            )
             if self.strategy.num_replicas_in_sync >= 1:  #TODO: BUG!!!!
                 self.train_dataset = self.strategy.experimental_distribute_dataset(
                     train_dataset)
                 self.valid_dataset = self.strategy.experimental_distribute_dataset(
                     valid_dataset)
 
+            # if shape isn't specified, use shape in dataset
+            if self.models_inputs_shape is None:
+                self.models_inputs_shape = {}
+                for key, model in self.models.items():
+                    #                     self.models_inputs_shape[key] = next(iter(train_dataset))[0].shape[1:] # TODO: deprecated?
+                    self.models_inputs_shape[
+                        key] = self.train_dataset.element_spec[0].shape[1:]
             # weights init in first call()
             for key, model in self.models.items():
-                model_outs = model(
-                    tf.keras.Input(next(iter(train_dataset))[0].shape[1:]))
+                # if shape isn't specified, use shape in dataset
+                model_outs = model(tf.keras.Input(
+                    self.models_inputs_shape[key]),
+                                   training=False)
                 if type(model_outs) != tuple:
                     model_outs = tuple((model_outs, ))
                 outs_shapes = tuple((out.shape for out in model_outs))
                 self.models_outs_shapes[key] = outs_shapes
-                LOGGER.info('{} model contains {} trainable variables.'.format(
-                    key, model.num_params))
+                LOGGER.info('model: {}, input_shape: {}'.format(
+                    key, self.models_inputs_shape[key]))
                 model.summary(print_fn=LOGGER.info)
             if train_metrics is None or valid_metrics is None:
                 raise ValueError(
@@ -83,10 +94,12 @@ class Runner:
                 if v.__class__.__name__ in metrics.__dict__:
                     self.metrics_manager.add_metrics(
                         k, metrics.__dict__[v.__class__.__name__](
+                            name=v.__class__.__name__ + '_' +
                             MetricsManager.KEY_TEST), MetricsManager.KEY_TEST)
                 else:
                     self.metrics_manager.add_metrics(
                         k, tf.keras.metrics.__dict__[v.__class__.__name__](
+                            name=v.__class__.__name__ + '_' +
                             MetricsManager.KEY_TEST), MetricsManager.KEY_TEST)
 
     def init(self):
@@ -226,9 +239,10 @@ class Runner:
                         valid_pbar.update(1)
                     if self.metrics_manager.is_better_state():
                         self.save_best()
+                        self.best_epoch = self.global_epoch
                     valid_pbar.set_postfix({
                         'best epoch':
-                        self.global_epoch,
+                        self.best_epoch,
                         self.best_state:
                         self.metrics_manager.best_record
                     })
@@ -301,6 +315,9 @@ class Runner:
             strategy_context = utils.dummy_context_mgr()
         return strategy_context
 
+    def custom_log_data(self, x_batch, y_batch):
+        return None, None
+
     def _log_data(self, x_batch, y_batch, training):
         key = MetricsManager.KEY_TRAIN if training else MetricsManager.KEY_VALID
         # log images
@@ -317,17 +334,28 @@ class Runner:
                     valid_out_idx.append(i)
             # only inference model when necessary
             if len(valid_out_idx) > 0:
-                model_out = model(x_batch)
-                for idx in valid_out_idx:
-                    names.append(model_key + '_' + str(idx))
-                    batches.append(model_out[idx])
+                if x_batch.shape[1:] == model.input_shape[1:]:
+                    model_out = model(x_batch, training=False)
+                    for idx in valid_out_idx:
+                        names.append(model_key + '_' + str(idx))
+                        batches.append(model_out[idx])
+
+        # add custom if exists
+        custom_n, custom_b = self.custom_log_data(x_batch, y_batch)
+        if custom_n is not None and custom_b is not None:
+            names.append(custom_n)
+            batches.append(custom_b)
+
         # vis
+        num_vis = 3 if x_batch.shape[0] > 3 else x_batch.shape[0]
+        idx = np.random.choice(list(range(x_batch.shape[0])), num_vis)
         for name, batch in zip(names, batches):
             if self.strategy.num_replicas_in_sync == 1:
                 batch_local = batch
             else:
                 batch_local = batch.values[0]
-
+            # randomly pick samples
+            batch_local = tf.gather(batch_local, idx, axis=0)
             if type(batch_local) == tuple:
                 for i, sub_batch in enumerate(batch_local):
                     # others

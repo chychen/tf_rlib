@@ -54,7 +54,7 @@ class ClassificationResNet18Cifar10(runner.Runner):
         if FLAGS.amp:
             self.optim = mixed_precision.LossScaleOptimizer(
                 self.optim, loss_scale='dynamic')
-        return {'resnet': self.model}, train_metrics, valid_metrics
+        return {'resnet': self.model}, None, train_metrics, valid_metrics
 
     def begin_epoch_callback(self, epoch_id, epochs):
         if epoch_id >= 0 and epoch_id < 150:

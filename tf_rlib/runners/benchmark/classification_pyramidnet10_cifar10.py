@@ -72,7 +72,7 @@ class ClassificationPyramidNet10Cifar10(runner.Runner):
         if FLAGS.amp:
             self.optim = mixed_precision.LossScaleOptimizer(
                 self.optim, loss_scale='dynamic')
-        return {'pyramidnet': self.model}, train_metrics, valid_metrics
+        return {'pyramidnet': self.model}, None, train_metrics, valid_metrics
 
     def begin_fit_callback(self, lr):
         self.init_lr = lr
