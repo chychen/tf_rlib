@@ -23,7 +23,8 @@ class BasicBlock(blocks.Block):
         self.conv = layers.Conv(filters,
                                 ks,
                                 strides=strides,
-                                use_bias=use_bias)
+                                use_bias=use_bias,
+                                transpose=transpose)
 
     def call(self, x):
         if self.preact:
