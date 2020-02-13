@@ -26,7 +26,7 @@ class UDMAA02(datasets.Dataset):
         super(UDMAA02, self).__init__()
         self.root_path = root_path
 
-    def get_data(self, target_idx=0, train_ratio=0.8, input_shape=(128, 128)):
+    def get_data(self, target_idx, train_ratio=0.8, input_shape=(128, 128)):
         """
         target_idx(int): ranged from 0~43
         """

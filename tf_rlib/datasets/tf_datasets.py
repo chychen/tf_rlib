@@ -201,17 +201,9 @@ class Cifar10Numpy(datasets.Dataset):
 
         @tf.function
         def augmentation(x, y, pad=4):
-            x = tf.cast(x, tf.float32)
-            x = (x - mean) / stddev
             x = tf.image.resize_with_crop_or_pad(x, 32 + pad * 2, 32 + pad * 2)
             x = tf.image.random_crop(x, [32, 32, 3])
             x = tf.image.random_flip_left_right(x)
-            return x, y
-
-        @tf.function
-        def normalize(x, y, pad=4):
-            x = tf.cast(x, tf.float32)
-            x = (x - mean) / stddev
             return x, y
 
         train_dataset = tf.data.Dataset.from_tensor_slices(
@@ -244,6 +236,7 @@ class Cifar10Numpy(datasets.Dataset):
         x = tf.where(tf.less(choice_flip, 0.5),
                      tf.image.random_flip_left_right(x), x)
         return x, y
+
 
 class Cifar10(datasets.Dataset):
     """ use tfrecords could speed-up 5%~15% comparing to numpy. because tfrecords format only use 50% space than numpy.
@@ -352,4 +345,65 @@ class Cifar10(datasets.Dataset):
             num_parallel_calls=tf.data.experimental.AUTOTUNE).cache().batch(
                 FLAGS.bs, drop_remainder=False).prefetch(
                     buffer_size=tf.data.experimental.AUTOTUNE)
+        return [train_dataset, valid_dataset]
+
+
+class Cifar10_OneClass(datasets.Dataset):
+    def __init__(self):
+        super(Cifar10_OneClass, self).__init__()
+
+    def get_data(self, target_idx):
+        return self._get_dsets(target_idx)
+
+    def _get_dsets(self, target_idx):
+        """
+        target_idx(int): ranged from 0~9
+        """
+        train_data, valid_data = tf.keras.datasets.cifar10.load_data()
+        train_data_x = train_data[0].astype(np.float32)
+        valid_data_x = valid_data[0].astype(np.float32)
+        mean = train_data_x.mean(axis=(0, 1, 2))
+        stddev = train_data_x.std(axis=(0, 1, 2))
+        train_data_x = (train_data_x - mean) / stddev
+        valid_data_x = (valid_data_x - mean) / stddev
+        train_data_y = train_data[1]
+        valid_data_y = valid_data[1]
+        LOGGER.info('mean:{}, std:{}'.format(mean, stddev))
+
+        # select target
+        train_target = train_data_x[np.argwhere(train_data_y == target_idx)[:,
+                                                                            0]]
+        valid_target = valid_data_x[np.argwhere(valid_data_y == target_idx)[:,
+                                                                            0]]
+        #         train_others = valid_data_x[np.argwhere(train_data_y != target_idx)[:,0]]
+        valid_others = valid_data_x[np.argwhere(valid_data_y != target_idx)[:,
+                                                                            0]]
+
+        train_x = train_target
+        train_y = np.ones([len(train_target), 1], np.float32)
+        valid_x = np.concatenate([valid_target, valid_others], axis=0)
+        valid_y = np.concatenate([
+            np.ones([len(valid_target), 1], np.float32),
+            np.zeros([len(valid_others), 1], np.float32)
+        ],
+                                 axis=0)
+
+        @tf.function
+        def augmentation(x, y, pad=4):
+            x = tf.image.resize_with_crop_or_pad(x, 32 + pad * 2, 32 + pad * 2)
+            x = tf.image.random_crop(x, [32, 32, 3])
+            x = tf.image.random_flip_left_right(x)
+            return x, y
+
+        train_dataset = tf.data.Dataset.from_tensor_slices((train_x, train_y))
+        valid_dataset = tf.data.Dataset.from_tensor_slices((valid_x, valid_y))
+        train_dataset = train_dataset.map(
+            augmentation,
+            num_parallel_calls=tf.data.experimental.AUTOTUNE).cache().shuffle(
+                len(train_target)).batch(
+                    FLAGS.bs, drop_remainder=True).prefetch(
+                        buffer_size=tf.data.experimental.AUTOTUNE)
+        valid_dataset = valid_dataset.cache().batch(
+            FLAGS.bs, drop_remainder=False).prefetch(
+                buffer_size=tf.data.experimental.AUTOTUNE)
         return [train_dataset, valid_dataset]
