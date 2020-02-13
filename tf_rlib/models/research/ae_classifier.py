@@ -65,7 +65,8 @@ class AEClassifier(models.Model):
         super(AEClassifier, self).__init__()
         self.first_norm = layers.Norm()
         #         self.dense = layers.Dense(14*14*8)
-        self.reshape = tf.keras.layers.Reshape((8, 8, 32))
+        #         self.reshape = tf.keras.layers.Reshape((8, 8, 32))
+        self.reshape = tf.keras.layers.Reshape((2, 2, 32 * 16))
         self.classifier = self._build_classifier()
         self.decoder = self._build_decoder()
 
