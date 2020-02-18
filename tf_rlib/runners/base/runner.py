@@ -187,8 +187,9 @@ class Runner:
         for _, (x_batch, y_batch) in enumerate(dataset):
             metrics = self.validate_step(x_batch, y_batch)
             self.metrics_manager.update(metrics, MetricsManager.KEY_TEST)
-
-        return self.metrics_manager.get_result(keys=[MetricsManager.KEY_TEST])
+        res = self.metrics_manager.get_result(keys=[MetricsManager.KEY_TEST])
+        self.metrics_manager.reset_metrics(key=MetricsManager.KEY_TEST)
+        return res
 
     def begin_fit_callback(self, lr):
         pass
