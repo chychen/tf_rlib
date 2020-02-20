@@ -8,6 +8,7 @@ FLAGS = flags.FLAGS
 class Pooling(tf.keras.layers.Layer):
     def __init__(self, pool_size=2):
         super(Pooling, self).__init__()
+        self.pool_size = pool_size
         if FLAGS.conv_pooling == 'AveragePooling' or FLAGS.conv_pooling == 'MaxPooling':
             pooling_op = layers.__dict__[FLAGS.conv_pooling +
                                          '{}D'.format(FLAGS.dim)]
@@ -20,6 +21,16 @@ class Pooling(tf.keras.layers.Layer):
             raise ValueError
 
     def call(self, x):
+        if FLAGS.padding == 'same_symmetric':
+            paddings = [[0, 0]]
+            for d in range(FLAGS.dim):
+                res = x.shape[d+1] % self.pool_size
+                if res != 0: 
+                    paddings.append([0, res])
+                else:
+                    paddings.append([0, 0])
+            paddings.append([0, 0])
+            x = tf.pad(x, paddings, mode='SYMMETRIC')
         x = self.pooling_op(x)
         return x
 
@@ -27,6 +38,7 @@ class Pooling(tf.keras.layers.Layer):
 class ShortcutPooling(tf.keras.layers.Layer):
     def __init__(self, pool_size=2):
         super(ShortcutPooling, self).__init__()
+        self.pool_size = pool_size
         if FLAGS.shortcut_pooling == 'AveragePooling' or FLAGS.shortcut_pooling == 'MaxPooling':
             pooling_op = layers.__dict__[FLAGS.conv_pooling +
                                          '{}D'.format(FLAGS.dim)]
@@ -39,6 +51,16 @@ class ShortcutPooling(tf.keras.layers.Layer):
             raise ValueError
 
     def call(self, x):
+        if FLAGS.padding == 'same_symmetric':
+            paddings = [[0, 0]]
+            for d in range(FLAGS.dim):
+                res = x.shape[d+1] % self.pool_size
+                if res != 0: 
+                    paddings.append([0, res])
+                else:
+                    paddings.append([0, 0])
+            paddings.append([0, 0])
+            x = tf.pad(x, paddings, mode='SYMMETRIC')
         x = self.pooling_op(x)
         return x
 
@@ -46,6 +68,7 @@ class ShortcutPooling(tf.keras.layers.Layer):
 class GlobalPooling(tf.keras.layers.Layer):
     def __init__(self, pool_size=2):
         super(GlobalPooling, self).__init__()
+        self.pool_size = pool_size
         if FLAGS.global_pooling == 'GlobalAveragePooling' or FLAGS.global_pooling == 'GlobalMaxPooling':
             pooling_op = layers.__dict__[FLAGS.global_pooling +
                                          '{}D'.format(FLAGS.dim)]

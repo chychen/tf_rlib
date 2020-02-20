@@ -35,11 +35,11 @@ class Conv(tf.keras.layers.Layer):
                                                          l2=FLAGS.l2))
 
     def call(self, x):
-        x = self.conv_op(x)
         if FLAGS.padding == 'same_symmetric':
             paddings = [[0, 0]]
             for _ in range(FLAGS.dim):
                 paddings.append([self.ks // 2, self.ks // 2])
             paddings.append([0, 0])
             x = tf.pad(x, paddings, mode='SYMMETRIC')
+        x = self.conv_op(x)
         return x
