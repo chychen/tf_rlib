@@ -73,8 +73,10 @@ flags.DEFINE_float('wd', 0.0,
 flags.DEFINE_string('kernel_initializer', 'he_normal',
                     'kernel_initializer, such as [he_normal, glorot_uniform]')
 flags.DEFINE_string('bias_initializer', 'zeros', 'bias_initializer')
-flags.DEFINE_string('padding', 'same',
-                    'same or valid, padding flag for conv, downsample')
+flags.DEFINE_string(
+    'padding', 'same',
+    'same or valid or same_symmetric, padding flag for transpose/conv, up/downsample'
+)
 flags.DEFINE_string('conv_act', 'ReLU', 'activation function name')
 flags.DEFINE_string('interpolation', 'nearest', 'method for UpSampling layer')
 ## BN
