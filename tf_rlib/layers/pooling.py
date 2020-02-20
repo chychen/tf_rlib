@@ -11,10 +11,11 @@ class Pooling(tf.keras.layers.Layer):
         if FLAGS.conv_pooling == 'AveragePooling' or FLAGS.conv_pooling == 'MaxPooling':
             pooling_op = layers.__dict__[FLAGS.conv_pooling +
                                          '{}D'.format(FLAGS.dim)]
+            padding = 'valid' if FLAGS.padding == 'same_symmetric' else FLAGS.padding
             self.pooling_op = pooling_op(
                 pool_size=pool_size,
                 strides=None,  # == pool_size
-                padding=FLAGS.padding)
+                padding=padding)
         else:
             raise ValueError
 
@@ -29,10 +30,11 @@ class ShortcutPooling(tf.keras.layers.Layer):
         if FLAGS.shortcut_pooling == 'AveragePooling' or FLAGS.shortcut_pooling == 'MaxPooling':
             pooling_op = layers.__dict__[FLAGS.conv_pooling +
                                          '{}D'.format(FLAGS.dim)]
+            padding = 'valid' if FLAGS.padding == 'same_symmetric' else FLAGS.padding
             self.pooling_op = pooling_op(
                 pool_size=pool_size,
                 strides=None,  # == pool_size
-                padding=FLAGS.padding)
+                padding=padding)
         else:
             raise ValueError
 
