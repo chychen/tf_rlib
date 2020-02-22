@@ -90,7 +90,7 @@ class MetricsManager:
     def show_image(self, x, key, epoch, name='image'):
         with self.boards_writer[key].as_default():
             for i, v in enumerate(x):
-                tf.summary.image(str(i) + '/' + name,
+                tf.summary.image(name + '/' + str(i),
                                  v[None],
                                  step=epoch,
                                  max_outputs=1)

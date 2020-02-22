@@ -161,7 +161,7 @@ class OCACNNRunner(runner.Runner):
     def custom_log_data(self, x_batch, y_batch):
         embedding = self.encoder(x_batch, training=False)
         _, reconstruct = self.model(embedding, training=False)
-        return 'reconstructs', reconstruct
+        return {'reconstructs': reconstruct}
 
     @property
     def required_flags(self):
