@@ -33,7 +33,8 @@ class Runner:
             models (dict): key(str), value(tf.keras.)
             metrics (dict): key(str), value(tf.keras.metrics.Metric)
         """
-        FLAGS.exp_name = self.__class__.__name__
+        if FLAGS.exp_name == 'default':
+            FLAGS.exp_name = self.__class__.__name__
         self._validate_flags()
 
         utils.init_tf_rlib(show=True)
