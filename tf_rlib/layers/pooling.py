@@ -24,8 +24,8 @@ class Pooling(tf.keras.layers.Layer):
         if FLAGS.padding == 'same_symmetric':
             paddings = [[0, 0]]
             for d in range(FLAGS.dim):
-                res = x.shape[d+1] % self.pool_size
-                if res != 0: 
+                res = x.shape[d + 1] % self.pool_size
+                if res != 0:
                     paddings.append([0, res])
                 else:
                     paddings.append([0, 0])
@@ -54,8 +54,8 @@ class ShortcutPooling(tf.keras.layers.Layer):
         if FLAGS.padding == 'same_symmetric':
             paddings = [[0, 0]]
             for d in range(FLAGS.dim):
-                res = x.shape[d+1] % self.pool_size
-                if res != 0: 
+                res = x.shape[d + 1] % self.pool_size
+                if res != 0:
                     paddings.append([0, res])
                 else:
                     paddings.append([0, 0])
