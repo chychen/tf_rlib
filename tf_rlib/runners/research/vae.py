@@ -15,8 +15,17 @@ class VAERunner(runner.Runner):
     """
     Reference: [Active Authentication using an Autoencoder regularized CNN-based One-Class Classifier](https://arxiv.org/abs/1903.01031)
     """
+
+    LOSSES_POOL = {
+        'mse': losses.MSELoss,
+        'mae': losses.MAELoss,
+        'vae': losses.VAELoss
+    }
+
     def __init__(self, train_dataset, valid_dataset=None):
         self.train_dataset = train_dataset
+        if FLAGS.loss_fn is None:
+            FLAGS.loss_fn = 'vae'
         super(VAERunner, self).__init__(train_dataset,
                                         valid_dataset=valid_dataset,
                                         best_state='loss')
@@ -31,7 +40,7 @@ class VAERunner(runner.Runner):
         valid_metrics = {
             'loss': tf.keras.metrics.Mean('loss'),
         }
-        self.vaeloss = losses.VAELoss()
+        self.loss_object = VAERunner.LOSSES_POOL[FLAGS.loss_fn]()
         self.optim = tfa.optimizers.AdamW(weight_decay=FLAGS.wd,
                                           lr=0.0,
                                           beta_1=FLAGS.adam_beta_1,
@@ -71,13 +80,18 @@ class VAERunner(runner.Runner):
         """
         with tf.GradientTape() as tape:
             mean, logvar, z = self.encoder(x)
-            x_logit = self.decoder(z)
-            loss = self.vaeloss(y, {
-                'z': z,
-                'x_logit': x_logit,
-                'mean': mean,
-                'logvar': logvar
-            })
+            if FLAGS.loss_fn == 'vae':
+                x_logit = self.decoder(z)
+                loss = self.loss_object(y, {
+                    'z': z,
+                    'x_logit': x_logit,
+                    'mean': mean,
+                    'logvar': logvar
+                })
+            else:
+                x_logit = self.decoder(mean)
+                loss = self.loss_object(y, x_logit)
+
             # distributed-aware
             loss = tf.nn.compute_average_loss(loss, global_batch_size=FLAGS.bs)
             regularization_loss = tf.nn.scale_regularization_loss(
@@ -98,20 +112,27 @@ class VAERunner(runner.Runner):
             metrics (dict)
         """
         mean, logvar, z = self.encoder(x, training=False)
-        x_logit = self.decoder(z, training=False)
-        loss = self.vaeloss(y, {
-            'z': z,
-            'x_logit': x_logit,
-            'mean': mean,
-            'logvar': logvar
-        })
+        if FLAGS.loss_fn == 'vae':
+            x_logit = self.decoder(z, training=False)
+            loss = self.loss_object(y, {
+                'z': z,
+                'x_logit': x_logit,
+                'mean': mean,
+                'logvar': logvar
+            })
+        else:
+            x_logit = self.decoder(mean, training=False)
+            loss = self.loss_object(y, x_logit)
         # distributed-aware
         loss = tf.nn.compute_average_loss(loss, global_batch_size=FLAGS.bs)
         return {'loss': [loss]}
 
     def custom_log_data(self, x_batch, y_batch):
         mean, logvar, z = self.encoder(x_batch, training=False)
-        x_logit = self.decoder(z, training=False)
+        if FLAGS.loss_fn == 'vae':
+            x_logit = self.decoder(z, training=False)
+        else:
+            x_logit = self.decoder(mean, training=False)
         return {'reconstructs': x_logit}
 
     @property
