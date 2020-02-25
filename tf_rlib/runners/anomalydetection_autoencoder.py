@@ -94,4 +94,4 @@ class ADAERunner(runner.Runner):
 
     @property
     def required_flags(self):
-        return ['dim', 'out_dim', 'bs', 'latent_dim', 'loss_fn']
+        return ['dim', 'bs', 'out_dim', 'latent_dim', 'loss_fn']

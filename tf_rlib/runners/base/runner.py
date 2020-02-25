@@ -33,7 +33,8 @@ class Runner:
             models (dict): key(str), value(tf.keras.)
             metrics (dict): key(str), value(tf.keras.metrics.Metric)
         """
-        FLAGS.exp_name = self.__class__.__name__
+        if FLAGS.exp_name == 'default':
+            FLAGS.exp_name = self.__class__.__name__
         self._validate_flags()
 
         utils.init_tf_rlib(show=True)
@@ -317,7 +318,7 @@ class Runner:
         return strategy_context
 
     def custom_log_data(self, x_batch, y_batch):
-        return None, None
+        return None
 
     def _log_data(self, x_batch, y_batch, training):
         key = MetricsManager.KEY_TRAIN if training else MetricsManager.KEY_VALID
@@ -342,10 +343,11 @@ class Runner:
                         batches.append(model_out[idx])
 
         # add custom if exists
-        custom_n, custom_b = self.custom_log_data(x_batch, y_batch)
-        if custom_n is not None and custom_b is not None:
-            names.append(custom_n)
-            batches.append(custom_b)
+        custom_dict = self.custom_log_data(x_batch, y_batch)
+        if custom_dict is not None and type(custom_dict) == dict:
+            for k, v in custom_dict.items():
+                names.append(k)
+                batches.append(v)
 
         # vis
         num_vis = 3 if x_batch.shape[0] > 3 else x_batch.shape[0]

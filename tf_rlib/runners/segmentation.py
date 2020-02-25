@@ -4,7 +4,7 @@ from tf_rlib.models import UNet as net
 from tf_rlib.runners.base import runner
 from tf_rlib.metrics import DiceCoefficient
 from tf_rlib.losses import CustomLoss
-from tf_rlib.losses.dice_loss import dice_loss
+from tf_rlib.losses.dice import dice_loss
 from absl import flags
 from absl import logging
 import numpy as np
