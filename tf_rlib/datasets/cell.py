@@ -14,7 +14,7 @@ class CellSegmentation(datasets.Dataset):
     '''
     def __init__(self, path='/mount/data/SegBenchmark/medical/cell/'):
         self.path = path
-        super(Cell_segmentation, self).__init__()
+        super(CellSegmentation, self).__init__()
 
     def get_data(self):
         return self._get_dsets()

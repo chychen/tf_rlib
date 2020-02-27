@@ -39,7 +39,14 @@ class UNet(models.Model):
     def _get_down_blocks(self):
         group = []
         for i in range(self.depth):
-            down_blocks = [blocks.DownBlock(self.init_filters * 2**(i + 1))]
+            down_blocks = [
+                blocks.BasicBlock(self.init_filters * 2**(i + 1),
+                                  1,
+                                  strides=1,
+                                  use_norm=False,
+                                  use_act=False),
+                blocks.DownBlock(self.init_filters * 2**(i + 1))
+            ]
             group.append(self.sequential(down_blocks))
         return group
 

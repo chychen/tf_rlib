@@ -38,11 +38,13 @@ class Mnist(datasets.Dataset):
         TEST_BUF = 10000
 
         train_dataset = tf.data.Dataset.from_tensor_slices(
-            (train_images, train_images)).cache().shuffle(TRAIN_BUF).batch(FLAGS.bs, drop_remainder=True).prefetch(
-                        buffer_size=tf.data.experimental.AUTOTUNE)
+            (train_images, train_images)).cache().shuffle(TRAIN_BUF).batch(
+                FLAGS.bs, drop_remainder=True).prefetch(
+                    buffer_size=tf.data.experimental.AUTOTUNE)
         test_dataset = tf.data.Dataset.from_tensor_slices(
-            (test_images, test_images)).cache().shuffle(TEST_BUF).batch(FLAGS.bs, drop_remainder=False).prefetch(
-                        buffer_size=tf.data.experimental.AUTOTUNE)
+            (test_images, test_images)).cache().shuffle(TEST_BUF).batch(
+                FLAGS.bs, drop_remainder=False).prefetch(
+                    buffer_size=tf.data.experimental.AUTOTUNE)
         return train_dataset, test_dataset
 
 
