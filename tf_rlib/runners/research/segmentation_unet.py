@@ -97,6 +97,14 @@ class SegmentationRunner(runner.Runner):
         probs = tf.nn.softmax(logits)
         return {'loss': [loss], 'dice_coef': [y, probs]}
 
+    @property
+    def required_flags(self):
+        return ['dim', 'out_dim', 'bs']
+
+    @property
+    def support_amp(self):
+        return False
+
     @tf.function
     def inference(self, x):
         bs = FLAGS.bs
