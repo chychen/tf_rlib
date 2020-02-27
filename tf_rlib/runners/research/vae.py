@@ -133,7 +133,7 @@ class VAERunner(runner.Runner):
             x_logit = self.decoder(z, training=False)
         else:
             x_logit = self.decoder(mean, training=False)
-            
+
         x_logit = tf.sigmoid(x_logit)
         return {'reconstructs': x_logit}
 
