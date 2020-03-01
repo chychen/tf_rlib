@@ -58,11 +58,9 @@ class UNet(models.Model):
         feat_maps = [x]
         for down in self.down_group:
             x = down(x)
-            print(x.shape)
             feat_maps.append(x)
         for up, map_ in zip(self.up_group, feat_maps[::-1][1:]):
             x = up([x, map_])
-            print(x.shape)
         x = self.out(x)
         x = tf.nn.softmax(x)
         return x
