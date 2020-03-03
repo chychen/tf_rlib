@@ -17,7 +17,7 @@ class ClassificationResNet18Cifar10(runner.Runner):
     Epochs: 300
     Scheduled LR: 1e-1 (1-150), 1e-2 (150-225), 1e-3 (225-300)
     Optimizer: SGD+momentum(0.9)+nesterov
-    Accuracy%: 93.6
+    Accuracy%: 94.31
     Parameters: 11,173,962
     """
     def __init__(self):

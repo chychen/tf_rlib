@@ -29,6 +29,7 @@ class ResBlock(blocks.Block):
                  strides=1,
                  preact=True,
                  last_norm=True,
+                 pool=False,
                  shortcut_type='project'):
         """ NOTE: by default is a pyramidnet-style resblock
         """
@@ -36,9 +37,12 @@ class ResBlock(blocks.Block):
         self.strides = strides
         self.last_norm = last_norm
         self.shortcut_type = shortcut_type
+        self.pool = pool
+        if self.pool:
+            self.pool_lay = layers.Pooling(pool_size=strides)
         self.bk1 = blocks.BasicBlock(filters,
                                      3,
-                                     strides=strides,
+                                     strides=strides if not pool else 1,
                                      preact=preact,
                                      use_norm=True,
                                      use_act=False)
@@ -52,14 +56,17 @@ class ResBlock(blocks.Block):
             self.bn = layers.Norm()
         if strides != 1:
             if self.shortcut_type == 'pad':
+                if pool:
+                    raise ValueError
                 self.downsample = layers.ShortcutPooling(pool_size=strides)
             elif self.shortcut_type == 'project':
-                self.shortcut = blocks.BasicBlock(filters,
-                                                  1,
-                                                  strides=strides,
-                                                  preact=preact,
-                                                  use_norm=True,
-                                                  use_act=True)
+                self.shortcut = blocks.BasicBlock(
+                    filters,
+                    1,
+                    strides=strides if not pool else 1,
+                    preact=preact,
+                    use_norm=True,
+                    use_act=False)
         else:
             if self.shortcut_type == 'pad':
                 self.downsample = lambda in_: in_
@@ -67,6 +74,8 @@ class ResBlock(blocks.Block):
                 self.shortcut = lambda in_: in_
 
     def call(self, x):
+        if self.pool:
+            x = self.pool_lay(x)
         out = self.bk1(x)
         out = self.bk2(out)
         if self.last_norm:
@@ -86,11 +95,15 @@ class ResBottleneck(blocks.Block):
                  strides=1,
                  preact=True,
                  last_norm=True,
+                 pool=False,
                  shortcut_type='project'):
         super(ResBottleneck, self).__init__(filters, strides=strides)
         self.strides = strides
         self.last_norm = last_norm
         self.shortcut_type = shortcut_type
+        self.pool = pool
+        if self.pool:
+            self.pool_lay = layers.Pooling(pool_size=strides)
         self.bk1 = blocks.BasicBlock(filters,
                                      1,
                                      strides=1,
@@ -99,7 +112,7 @@ class ResBottleneck(blocks.Block):
                                      use_act=False)
         self.bk2 = blocks.BasicBlock(filters,
                                      3,
-                                     strides=strides,
+                                     strides=strides if not pool else 1,
                                      preact=preact,
                                      use_norm=True,
                                      use_act=True)
@@ -113,15 +126,17 @@ class ResBottleneck(blocks.Block):
             self.bn = layers.Norm()
         if strides != 1:
             if self.shortcut_type == 'pad':
+                if pool:
+                    raise ValueError
                 self.downsample = layers.ShortcutPooling(pool_size=strides)
             elif self.shortcut_type == 'project':
                 self.shortcut = blocks.BasicBlock(
                     filters * ResBottleneck.outchannel_ratio,
                     1,
-                    strides=strides,
+                    strides=strides if not pool else 1,
                     preact=preact,
                     use_norm=True,
-                    use_act=True)
+                    use_act=False)
         else:
             if self.shortcut_type == 'pad':
                 self.downsample = lambda in_: in_
@@ -129,6 +144,8 @@ class ResBottleneck(blocks.Block):
                 self.shortcut = lambda in_: in_
 
     def call(self, x):
+        if self.pool:
+            x = self.pool_lay(x)
         out = self.bk1(x)
         out = self.bk2(out)
         out = self.bk3(out)

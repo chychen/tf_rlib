@@ -8,10 +8,10 @@ class DownBlock(blocks.Block):
     '''
     def __init__(self, n_filters, pool_size=2):
         super(DownBlock, self).__init__(n_filters)
-        self.pool = layers.Pooling(pool_size=pool_size)
-        self.res_block = blocks.ResBlock(n_filters)
+        self.res_block = blocks.ResBlock(n_filters,
+                                         strides=pool_size,
+                                         pool=True)
 
     def call(self, x):
-        x = self.pool(x)
         x = self.res_block(x)
         return x
