@@ -54,7 +54,7 @@ class ResBlock(blocks.Block):
                                      use_act=True)
         if self.last_norm:
             self.bn = layers.Norm()
-        if strides != 1 and pool:
+        if strides != 1:
             if self.shortcut_type == 'pad':
                 if pool:
                     raise ValueError
@@ -124,7 +124,7 @@ class ResBottleneck(blocks.Block):
                                      use_act=True)
         if self.last_norm:
             self.bn = layers.Norm()
-        if strides != 1 and pool:
+        if strides != 1:
             if self.shortcut_type == 'pad':
                 if pool:
                     raise ValueError
