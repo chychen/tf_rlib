@@ -65,6 +65,18 @@ class Omniglot(datasets.Dataset):
         self.img_shape = img_size + (1, )
         self.n_train_class = n_train_class
         self.np_dset = self._get_np_dset(img_size, force_update)
+        # shape
+        self.n_query = (self.np_dset.shape[1] -
+                        self.k_shot) * self.c_way  # n_query=19*5
+        self.n_query_valid = 1 * self.c_way  # n_query=1*5
+        self.train_shape = [
+            self.n_query, self.c_way, self.k_shot, *self.img_shape
+        ]
+        self.valid_shape = [
+            self.n_query_valid, self.c_way, self.k_shot, *self.img_shape
+        ]
+        self.train_y_shape = [self.n_query, self.c_way]
+        self.valid_y_shape = [self.n_query_valid, self.c_way]
         # get mean,std
         self.mean = np.mean(self.np_dset[:self.n_train_class])
         self.std = np.std(self.np_dset[:self.n_train_class])
@@ -121,10 +133,13 @@ class Omniglot(datasets.Dataset):
                                             c_way=self.c_way,
                                             k_shot=self.k_shot,
                                             img_shape=self.img_shape),
-            output_types=((np.float32, np.float32),
-                          np.float32)).cache().shuffle(10000).batch(
-                              FLAGS.bs, drop_remainder=True).prefetch(
-                                  buffer_size=tf.data.experimental.AUTOTUNE)
+            output_types=((np.float32, np.float32), np.float32),
+            output_shapes=((tf.TensorShape(
+                self.train_shape), tf.TensorShape(
+                    self.train_shape)), tf.TensorShape(
+                        self.train_y_shape))).shuffle(1000).batch(
+                            FLAGS.bs, drop_remainder=True).prefetch(
+                                buffer_size=tf.data.experimental.AUTOTUNE)
         valid_dataset = tf.data.Dataset.from_generator(
             lambda: self._episode_generator(np_dset,
                                             self.n_valid_episode,
@@ -132,9 +147,12 @@ class Omniglot(datasets.Dataset):
                                             c_way=self.c_way,
                                             k_shot=self.k_shot,
                                             img_shape=self.img_shape),
-            output_types=((np.float32, np.float32), np.float32)).cache().batch(
-                FLAGS.bs, drop_remainder=False).prefetch(
-                    buffer_size=tf.data.experimental.AUTOTUNE)
+            output_types=((np.float32, np.float32), np.float32),
+            output_shapes=((tf.TensorShape(self.valid_shape),
+                            tf.TensorShape(self.valid_shape)),
+                           tf.TensorShape(self.valid_y_shape))).batch(
+                               FLAGS.bs, drop_remainder=False).prefetch(
+                                   buffer_size=tf.data.experimental.AUTOTUNE)
 
         return (train_dataset, valid_dataset)
 
@@ -246,9 +264,9 @@ class Cifar10Numpy(datasets.Dataset):
             (train_data_x, train_data_y))
         valid_dataset = tf.data.Dataset.from_tensor_slices(
             (valid_data_x, valid_data_y))
-        train_dataset = train_dataset.map(
+        train_dataset = train_dataset.cache().map(
             augmentation,
-            num_parallel_calls=tf.data.experimental.AUTOTUNE).cache().shuffle(
+            num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(
                 50000).batch(FLAGS.bs, drop_remainder=True).prefetch(
                     buffer_size=tf.data.experimental.AUTOTUNE)
         valid_dataset = valid_dataset.cache().batch(
@@ -350,15 +368,11 @@ class Cifar10(datasets.Dataset):
         }
 
         @tf.function
-        def augmentation(example_proto, pad=4):
-            example = tf.io.parse_single_example(example_proto,
-                                                 image_feature_description)
-            x = tf.io.decode_raw(example['image_raw'], self.dtype)
-            x = tf.reshape(x, [32, 32, 3])
+        def augmentation(x, y, pad=4):
             x = tf.image.resize_with_crop_or_pad(x, 32 + pad * 2, 32 + pad * 2)
             x = tf.image.random_crop(x, [32, 32, 3])
             x = tf.image.random_flip_left_right(x)
-            return x, example['label']
+            return x, y
 
         @tf.function
         def parse(example_proto):
@@ -370,10 +384,12 @@ class Cifar10(datasets.Dataset):
 
         train_dataset = tf.data.TFRecordDataset(self.train_file)
         train_dataset = train_dataset.map(
-            augmentation,
-            num_parallel_calls=tf.data.experimental.AUTOTUNE).cache().shuffle(
-                50000).batch(FLAGS.bs, drop_remainder=True).prefetch(
-                    buffer_size=tf.data.experimental.AUTOTUNE)
+            parse,
+            num_parallel_calls=tf.data.experimental.AUTOTUNE).cache().map(
+                augmentation,
+                num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(
+                    50000).batch(FLAGS.bs, drop_remainder=True).prefetch(
+                        buffer_size=tf.data.experimental.AUTOTUNE)
 
         valid_dataset = tf.data.TFRecordDataset(self.valid_file)
         valid_dataset = valid_dataset.map(
@@ -433,9 +449,9 @@ class Cifar10_OneClass(datasets.Dataset):
 
         train_dataset = tf.data.Dataset.from_tensor_slices((train_x, train_y))
         valid_dataset = tf.data.Dataset.from_tensor_slices((valid_x, valid_y))
-        train_dataset = train_dataset.map(
+        train_dataset = train_dataset.cache().map(
             augmentation,
-            num_parallel_calls=tf.data.experimental.AUTOTUNE).cache().shuffle(
+            num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(
                 len(train_target)).batch(
                     FLAGS.bs, drop_remainder=True).prefetch(
                         buffer_size=tf.data.experimental.AUTOTUNE)
