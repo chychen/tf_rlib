@@ -64,7 +64,7 @@ class FewShotRelationNetOmniglot(runner.Runner):
             'acc': tf.keras.metrics.CategoricalAccuracy('acc')
         }
         self.loss_object = MSELoss()
-        self.optim = tf.keras.optimizers.Adam(lr=FLAGS.lr,
+        self.optim = tf.keras.optimizers.Adam(lr=0.0,
                                               beta_1=FLAGS.adam_beta_1,
                                               beta_2=FLAGS.adam_beta_2,
                                               epsilon=FLAGS.adam_epsilon)
