@@ -41,6 +41,7 @@ class Runner:
         self.strategy = tf.distribute.MirroredStrategy()
         LOGGER.info('Number of devices: {}'.format(
             self.strategy.num_replicas_in_sync))
+
         self.global_epoch = 0
         self.global_step = 0
         self.save_path = FLAGS.save_path
@@ -62,24 +63,15 @@ class Runner:
             if self.models_inputs_shape is None:
                 self.models_inputs_shape = {}
                 for key, model in self.models.items():
-                    if type(self.train_dataset.element_spec[0]) != tuple:
-                        self.models_inputs_shape[key] = [
-                            self.train_dataset.element_spec[0].shape[1:]
-                        ]
-                    else:
-                        self.models_inputs_shape[key] = [
-                            x.shape[1:]
-                            for x in self.train_dataset.element_spec[0]
-                        ]
-
+                    #                     self.models_inputs_shape[key] = next(iter(train_dataset))[0].shape[1:] # TODO: deprecated?
+                    self.models_inputs_shape[
+                        key] = self.train_dataset.element_spec[0].shape[1:]
             # weights init in first call()
             for key, model in self.models.items():
-                keras_input = tuple()
-                for shape in self.models_inputs_shape[key]:
-                    keras_input = keras_input + (tf.keras.Input(shape), )
-                if len(keras_input) == 1:
-                    keras_input = keras_input[0]
-                model_outs = model(keras_input, training=False)
+                # if shape isn't specified, use shape in dataset
+                model_outs = model(tf.keras.Input(
+                    self.models_inputs_shape[key]),
+                                   training=False)
                 if type(model_outs) != tuple:
                     model_outs = tuple((model_outs, ))
                 outs_shapes = tuple((out.shape for out in model_outs))
@@ -212,12 +204,13 @@ class Runner:
             self.begin_fit_callback(lr)
             train_pbar = tqdm(desc='train', leave=False, dynamic_ncols=True)
             valid_pbar = tqdm(desc='valid', leave=False, dynamic_ncols=True)
-            for e_idx in range(epochs):
+            epoch_stride = FLAGS.pre_augment if FLAGS.pre_augment is not None else 1
+            for e_idx in range(0, epochs, epoch_stride):
                 train_num_batch = 0
                 valid_num_batch = 0
                 first_e_timer = time.time()
                 self.begin_epoch_callback(e_idx, epochs)
-                self.global_epoch = self.global_epoch + 1
+                self.global_epoch = self.global_epoch + 1*epoch_stride
                 # progress bars
                 train_pbar.reset()
                 valid_pbar.reset()
@@ -234,10 +227,10 @@ class Runner:
                     else:
                         self._train_step(x_batch, y_batch)
                     train_pbar.update(1)
-                    train_pbar.set_postfix({
-                        'epoch/total':
-                        '{}/{}'.format(self.global_epoch, global_total_epochs)
-                    })
+                train_pbar.set_postfix({
+                    'epoch/total':
+                    '{}/{}'.format(self.global_epoch, global_total_epochs)
+                })
                 self._log_data(x_batch, y_batch, training=True)
 
                 # validate one epoch
@@ -358,12 +351,8 @@ class Runner:
                 batches.append(v)
 
         # vis
-        if type(x_batch) == tuple:
-            input_shape = x_batch[0].shape
-        else:
-            input_shape = x_batch.shape
-        num_vis = 3 if input_shape[0] > 3 else input_shape[0]
-        idx = np.random.choice(list(range(input_shape[0])), num_vis)
+        num_vis = 3 if x_batch.shape[0] > 3 else x_batch.shape[0]
+        idx = np.random.choice(list(range(x_batch.shape[0])), num_vis)
         for name, batch in zip(names, batches):
             if self.strategy.num_replicas_in_sync == 1:
                 batch_local = batch
@@ -382,6 +371,17 @@ class Runner:
                             key,
                             epoch=self.global_epoch,
                             name=name + '_tuple_{}'.format(i))
+                    # few-shot
+                    few_shot_name = ['support', 'query']
+                    if len(sub_batch.shape) == 7 and sub_batch.shape[
+                            -1] <= 4:  # [b, q, c, k, w, h, c], c<4
+                        sub_batch = tf.reshape(sub_batch,
+                                               [-1, *sub_batch.shape[-3:]])
+                        self.metrics_manager.show_image(
+                            sub_batch,
+                            key,
+                            epoch=self.global_epoch,
+                            name=name + '_' + few_shot_name[i])
             else:
                 if len(
                         batch_local.shape

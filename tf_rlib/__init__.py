@@ -52,6 +52,8 @@ flags.DEFINE_integer(
     'dim', None,
     'Input Dimensions will decide all the dimensions of operations automatically.'
 )
+flags.DEFINE_integer('pre_augment', None,
+                     'how many times to pre-augment the dataset')
 
 # General Hyper-perameters
 

@@ -5,8 +5,10 @@ import os
 import matplotlib.pyplot as plt
 from tensorflow.keras.utils import to_categorical
 from absl import flags, logging
-from tf_rlib import datasets
 from tqdm.auto import tqdm
+from PIL import Image
+from tf_rlib import datasets
+from tf_rlib.datasets.randaugment import RandAugment
 
 FLAGS = flags.FLAGS
 LOGGER = logging.get_absl_logger()
@@ -458,4 +460,69 @@ class Cifar10_OneClass(datasets.Dataset):
         valid_dataset = valid_dataset.cache().batch(
             FLAGS.bs, drop_remainder=False).prefetch(
                 buffer_size=tf.data.experimental.AUTOTUNE)
+        return [train_dataset, valid_dataset]
+
+
+class Cifar10RandAugment(datasets.Dataset):
+    def __init__(self):
+        super(Cifar10RandAugment, self).__init__()
+        self.img_augment = RandAugment()
+
+    def get_data(self):
+        return self._get_dsets()
+
+    def _get_dsets(self):
+        train_data, valid_data = tf.keras.datasets.cifar10.load_data()
+        train_data_x = train_data[0].astype(np.float32)
+        valid_data_x = valid_data[0].astype(np.float32)
+        mean = train_data_x.mean(axis=(0, 1, 2))
+        stddev = train_data_x.std(axis=(0, 1, 2))
+        if FLAGS.amp:
+            train_data_x = train_data_x.astype(np.float16)
+            valid_data_x = valid_data_x.astype(np.float16)
+        train_data_y = train_data[1]
+        valid_data_y = valid_data[1]
+        LOGGER.info('mean:{}, std:{}'.format(mean, stddev))
+
+        def augmentation(x, y):
+            def my_numpy_func(x):
+                x = Image.fromarray(np.uint8(x))
+                x = self.img_augment(x)
+                x = tf.keras.preprocessing.image.img_to_array(x)
+                return x
+
+            x = tf.numpy_function(my_numpy_func, [x], tf.float32)
+            x.set_shape([32, 32, 3])
+            x = (x - mean) / stddev
+            return x, y
+
+        @tf.function
+        def norm(x, y):
+            x = (x - mean) / stddev
+            return x, y
+
+        train_dataset = tf.data.Dataset.from_tensor_slices(
+            (train_data_x, train_data_y))
+        valid_dataset = tf.data.Dataset.from_tensor_slices(
+            (valid_data_x, valid_data_y))
+        if FLAGS.pre_augment is not None:
+            # augment FLAGS.pre_augment times, than cache in local to speed up the whole process
+            train_dataset = train_dataset.repeat(FLAGS.pre_augment).map(
+                augmentation,
+                num_parallel_calls=tf.data.experimental.AUTOTUNE).cache(
+                    '/.').shuffle(5000).batch(
+                        FLAGS.bs, drop_remainder=True).prefetch(
+                            buffer_size=tf.data.experimental.AUTOTUNE)
+        else:
+            train_dataset = train_dataset.cache().map(
+                augmentation,
+                num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(
+                    5000).batch(FLAGS.bs, drop_remainder=True).prefetch(
+                        buffer_size=tf.data.experimental.AUTOTUNE)
+
+        valid_dataset = valid_dataset.map(
+            norm,
+            num_parallel_calls=tf.data.experimental.AUTOTUNE).cache().batch(
+                FLAGS.bs, drop_remainder=False).prefetch(
+                    buffer_size=tf.data.experimental.AUTOTUNE)
         return [train_dataset, valid_dataset]
