@@ -2,6 +2,7 @@ import tensorflow as tf
 from tensorflow.keras.mixed_precision import experimental as mixed_precision
 from tf_rlib.models import ResNet_Cifar10
 from tf_rlib.runners.base import runner
+# from tf_rlib.datasets import Cifar10RandAugment as Cifar10
 from tf_rlib.datasets import Cifar10
 from absl import flags
 from absl import logging

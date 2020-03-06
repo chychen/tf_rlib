@@ -198,7 +198,7 @@ class Runner:
     def begin_epoch_callback(self, epoch_id, epochs):
         pass
 
-    def fit(self, epochs, lr):
+    def fit(self, epochs, lr, find_best=False):
         global_total_epochs = self.global_epoch + epochs
         with self._get_strategy_ctx():
             self.begin_fit_callback(lr)
@@ -206,16 +206,24 @@ class Runner:
             valid_pbar = tqdm(desc='valid', leave=False, dynamic_ncols=True)
             epoch_stride = FLAGS.pre_augment if FLAGS.pre_augment is not None else 1
             for e_idx in range(0, epochs, epoch_stride):
+                is_last_run = (e_idx // epoch_stride) == (epochs // epoch_stride - 1)
                 train_num_batch = 0
                 valid_num_batch = 0
                 first_e_timer = time.time()
                 self.begin_epoch_callback(e_idx, epochs)
-                self.global_epoch = self.global_epoch + 1*epoch_stride
+                self.global_epoch = self.global_epoch + 1 * epoch_stride
                 # progress bars
                 train_pbar.reset()
                 valid_pbar.reset()
                 self.metrics_manager.reset()
+
                 # train one epoch
+                if is_last_run and find_best:
+                    self.load_best()
+                train_pbar.set_postfix({
+                    'epoch/total':
+                    '{}/{}'.format(self.global_epoch, global_total_epochs)
+                })
                 for train_num_batch, (x_batch, y_batch) in enumerate(
                         self.train_dataset):
                     self.global_step = self.global_step + 1
@@ -227,30 +235,18 @@ class Runner:
                     else:
                         self._train_step(x_batch, y_batch)
                     train_pbar.update(1)
-                train_pbar.set_postfix({
-                    'epoch/total':
-                    '{}/{}'.format(self.global_epoch, global_total_epochs)
-                })
+
+                    # find best model by eavluating validation data on each training batch
+                    if is_last_run and find_best:
+                        valid_pbar.reset()
+                        self._validation_lopp(valid_pbar)
                 self._log_data(x_batch, y_batch, training=True)
 
                 # validate one epoch
-                if self.valid_dataset is not None:
-                    for valid_num_batch, (x_batch, y_batch) in enumerate(
-                            self.valid_dataset):
-                        # validate one step
-                        self._validate_step(x_batch, y_batch)
-                        valid_pbar.update(1)
-                    if self.metrics_manager.is_better_state():
-                        self.save_best()
-                        self.best_epoch = self.global_epoch
-                    valid_pbar.set_postfix({
-                        'best epoch':
-                        self.best_epoch,
-                        self.best_state:
-                        self.metrics_manager.best_record
-                    })
-                    self._log_data(x_batch, y_batch, training=False)
+                if not is_last_run or not find_best:
+                    valid_num_batch = self._validation_lopp(valid_pbar)
 
+                # others
                 if self.global_epoch == 1:
                     LOGGER.warn('')  # new line
                     LOGGER.warn('Time cost for first epoch: {} sec'.format(
@@ -275,6 +271,25 @@ class Runner:
                 # logging
                 self.metrics_manager.show_message(self.global_epoch)
             self.metrics_manager.register_hparams()
+
+    def _validation_lopp(self, valid_pbar):
+        if self.valid_dataset is not None:
+            for valid_num_batch, (x_batch,
+                                  y_batch) in enumerate(self.valid_dataset):
+                # validate one step
+                self._validate_step(x_batch, y_batch)
+                valid_pbar.update(1)
+            if self.metrics_manager.is_better_state():
+                self.save_best()
+                self.best_epoch = self.global_epoch
+            valid_pbar.set_postfix({
+                'best epoch':
+                self.best_epoch,
+                self.best_state:
+                self.metrics_manager.best_record
+            })
+            self._log_data(x_batch, y_batch, training=False)
+            return valid_num_batch
 
     def save(self, path):
         for key, model in self.models.items():
