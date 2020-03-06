@@ -24,6 +24,7 @@ LOGGER = logging.get_absl_logger()
 # General settings
 flags.DEFINE_string('log_level', 'INFO',
                     'log_level: DEBUG, INFO, WARNING, ERROR')
+flags.DEFINE_bool('tqdm', True, 'use tqdm?')
 flags.DEFINE_bool('profile', False, 'use TensorBoard profiler?')
 flags.DEFINE_bool('purge_logs', False, 'remove all logs')
 flags.DEFINE_string('current_time', current_time,

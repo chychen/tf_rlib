@@ -202,19 +202,27 @@ class Runner:
         global_total_epochs = self.global_epoch + epochs
         with self._get_strategy_ctx():
             self.begin_fit_callback(lr)
-            train_pbar = tqdm(desc='train', leave=False, dynamic_ncols=True)
-            valid_pbar = tqdm(desc='valid', leave=False, dynamic_ncols=True)
+            train_pbar = tqdm(desc='train',
+                              leave=False,
+                              dynamic_ncols=True,
+                              disable=not FLAGS.tqdm)
+            valid_pbar = tqdm(desc='valid',
+                              leave=False,
+                              dynamic_ncols=True,
+                              disable=not FLAGS.tqdm)
             epoch_stride = FLAGS.pre_augment if FLAGS.pre_augment is not None else 1
             for e_idx in range(0, epochs, epoch_stride):
-                is_last_run = (e_idx // epoch_stride) == (epochs // epoch_stride - 1)
+                is_last_run = (e_idx //
+                               epoch_stride) == (epochs // epoch_stride - 1)
                 train_num_batch = 0
                 valid_num_batch = 0
                 first_e_timer = time.time()
                 self.begin_epoch_callback(e_idx, epochs)
                 self.global_epoch = self.global_epoch + 1 * epoch_stride
                 # progress bars
-                train_pbar.reset()
-                valid_pbar.reset()
+                if FLAGS.tqdm:
+                    train_pbar.reset()
+                    valid_pbar.reset()
                 self.metrics_manager.reset()
 
                 # train one epoch
@@ -238,7 +246,8 @@ class Runner:
 
                     # find best model by eavluating validation data on each training batch
                     if is_last_run and find_best:
-                        valid_pbar.reset()
+                        if FLAGS.tqdm:
+                            valid_pbar.reset()
                         self._validation_lopp(valid_pbar)
                 self._log_data(x_batch, y_batch, training=True)
 
@@ -262,11 +271,13 @@ class Runner:
                         train_pbar = tqdm(desc='train',
                                           leave=False,
                                           dynamic_ncols=True,
-                                          total=train_num_batch)
+                                          total=train_num_batch,
+                                          disable=not FLAGS.tqdm)
                         valid_pbar = tqdm(desc='valid',
                                           leave=False,
                                           dynamic_ncols=True,
-                                          total=valid_num_batch)
+                                          total=valid_num_batch,
+                                          disable=not FLAGS.tqdm)
 
                 # logging
                 self.metrics_manager.show_message(self.global_epoch)
