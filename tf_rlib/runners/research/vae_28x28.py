@@ -19,7 +19,7 @@ class VAERunner(runner.Runner):
     LOSSES_POOL = {
         'mse': losses.MSELoss,
         'mae': losses.MAELoss,
-        'vae': losses.VAELoss
+        'vae': losses.VAEBernoulliLoss
     }
 
     def __init__(self, train_dataset, valid_dataset=None):
@@ -82,7 +82,7 @@ class VAERunner(runner.Runner):
             mean, logvar, z = self.encoder(x)
             if FLAGS.loss_fn == 'vae':
                 x_logit = self.decoder(z)
-                loss = self.loss_object(y, {
+                loss = self.loss_object(x, {
                     'z': z,
                     'x_logit': x_logit,
                     'mean': mean,
@@ -90,7 +90,7 @@ class VAERunner(runner.Runner):
                 })
             else:
                 x_logit = self.decoder(mean)
-                loss = self.loss_object(y, x_logit)
+                loss = self.loss_object(x, x_logit)
 
             # distributed-aware
             loss = tf.nn.compute_average_loss(loss, global_batch_size=FLAGS.bs)
@@ -114,7 +114,7 @@ class VAERunner(runner.Runner):
         mean, logvar, z = self.encoder(x, training=False)
         if FLAGS.loss_fn == 'vae':
             x_logit = self.decoder(z, training=False)
-            loss = self.loss_object(y, {
+            loss = self.loss_object(x, {
                 'z': z,
                 'x_logit': x_logit,
                 'mean': mean,
@@ -122,7 +122,7 @@ class VAERunner(runner.Runner):
             })
         else:
             x_logit = self.decoder(mean, training=False)
-            loss = self.loss_object(y, x_logit)
+            loss = self.loss_object(x, x_logit)
         # distributed-aware
         loss = tf.nn.compute_average_loss(loss, global_batch_size=FLAGS.bs)
         return {'loss': [loss]}
