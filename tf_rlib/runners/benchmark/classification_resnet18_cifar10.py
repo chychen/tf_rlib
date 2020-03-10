@@ -2,6 +2,7 @@ import tensorflow as tf
 from tensorflow.keras.mixed_precision import experimental as mixed_precision
 from tf_rlib.models import ResNet_Cifar10
 from tf_rlib.runners.base import runner
+# from tf_rlib.datasets import Cifar10RandAugment as Cifar10
 from tf_rlib.datasets import Cifar10
 from absl import flags
 from absl import logging
@@ -18,6 +19,7 @@ class ClassificationResNet18Cifar10(runner.Runner):
     Scheduled LR: 1e-1 (1-150), 1e-2 (150-225), 1e-3 (225-300)
     Optimizer: SGD+momentum(0.9)+nesterov
     Accuracy%: 94.31
+    Accuracy%: 94.44 (with RandAugment)
     Parameters: 11,173,962
     """
     def __init__(self):

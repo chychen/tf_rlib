@@ -24,6 +24,7 @@ LOGGER = logging.get_absl_logger()
 # General settings
 flags.DEFINE_string('log_level', 'INFO',
                     'log_level: DEBUG, INFO, WARNING, ERROR')
+flags.DEFINE_bool('tqdm', True, 'use tqdm?')
 flags.DEFINE_bool('profile', False, 'use TensorBoard profiler?')
 flags.DEFINE_bool('purge_logs', False, 'remove all logs')
 flags.DEFINE_string('current_time', current_time,
@@ -52,6 +53,8 @@ flags.DEFINE_integer(
     'dim', None,
     'Input Dimensions will decide all the dimensions of operations automatically.'
 )
+flags.DEFINE_integer('pre_augment', None,
+                     'how many times to pre-augment the dataset')
 
 # General Hyper-perameters
 
