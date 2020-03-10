@@ -74,7 +74,9 @@ class Runner:
                         ]
             else:
                 for key in self.models_inputs_shape:
-                    self.models_inputs_shape[key] = [self.models_inputs_shape[key]]
+                    self.models_inputs_shape[key] = [
+                        self.models_inputs_shape[key]
+                    ]
             # weights init in first call()
             for key, model in self.models.items():
                 keras_input = tuple()
