@@ -256,12 +256,12 @@ class Runner:
                     if is_last_run and find_best:
                         if FLAGS.tqdm:
                             valid_pbar.reset()
-                        self._validation_lopp(valid_pbar)
+                        self._validation_loop(valid_pbar)
                 self._log_data(x_batch, y_batch, training=True)
 
                 # validate one epoch
                 if not is_last_run or not find_best:
-                    valid_num_batch = self._validation_lopp(valid_pbar)
+                    valid_num_batch = self._validation_loop(valid_pbar)
 
                 # others
                 if self.global_epoch == 1:
@@ -291,7 +291,7 @@ class Runner:
                 self.metrics_manager.show_message(self.global_epoch)
             self.metrics_manager.register_hparams()
 
-    def _validation_lopp(self, valid_pbar):
+    def _validation_loop(self, valid_pbar):
         if self.valid_dataset is not None:
             for valid_num_batch, (x_batch,
                                   y_batch) in enumerate(self.valid_dataset):
