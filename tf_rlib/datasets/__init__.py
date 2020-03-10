@@ -1,3 +1,4 @@
+from tf_rlib.datasets import augmentation
 from tf_rlib.datasets.dataset import Dataset
 from tf_rlib.datasets.tf_datasets import SVHN, Mnist, Omniglot, Cifar10, Cifar10Numpy, Cifar10_OneClass, Cifar10RandAugment
 from tf_rlib.datasets.cell import CellSegmentation

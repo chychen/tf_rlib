@@ -8,7 +8,7 @@ from absl import flags, logging
 from tqdm.auto import tqdm
 from PIL import Image
 from tf_rlib import datasets
-from tf_rlib.datasets.randaugment import RandAugment
+from tf_rlib.datasets.augmentation import RandAugment
 
 FLAGS = flags.FLAGS
 LOGGER = logging.get_absl_logger()
