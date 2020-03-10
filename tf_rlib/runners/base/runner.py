@@ -63,15 +63,23 @@ class Runner:
             if self.models_inputs_shape is None:
                 self.models_inputs_shape = {}
                 for key, model in self.models.items():
-                    #                     self.models_inputs_shape[key] = next(iter(train_dataset))[0].shape[1:] # TODO: deprecated?
-                    self.models_inputs_shape[
-                        key] = self.train_dataset.element_spec[0].shape[1:]
+                    if type(self.train_dataset.element_spec[0]) != tuple:
+                        self.models_inputs_shape[key] = [
+                            self.train_dataset.element_spec[0].shape[1:]
+                        ]
+                    else:
+                        self.models_inputs_shape[key] = [
+                            x.shape[1:]
+                            for x in self.train_dataset.element_spec[0]
+                        ]
             # weights init in first call()
             for key, model in self.models.items():
-                # if shape isn't specified, use shape in dataset
-                model_outs = model(tf.keras.Input(
-                    self.models_inputs_shape[key]),
-                                   training=False)
+                keras_input = tuple()
+                for shape in self.models_inputs_shape[key]:
+                    keras_input = keras_input + (tf.keras.Input(shape), )
+                if len(keras_input) == 1:
+                    keras_input = keras_input[0]
+                model_outs = model(keras_input, training=False)
                 if type(model_outs) != tuple:
                     model_outs = tuple((model_outs, ))
                 outs_shapes = tuple((out.shape for out in model_outs))
