@@ -14,8 +14,9 @@ class NTUH_HeartArota(datasets.Dataset):
     '''
     This dataset is private in NTUH.
     '''
-    def __init__(self, path='/mount/src/home/ntun/Whole_heart/NTUHv2/clara/data/'):
+    def __init__(self, path='/mount/src/home/ntun/Whole_heart/NTUHv2/clara/data/', max_crop_size = [144, 144, 144]):
         self.path = path
+        self.max_crop_size = max_crop_size
         super(NTUH_HeartArota, self).__init__()
         
     def get_data(self):
@@ -102,15 +103,6 @@ class NTUH_HeartArota(datasets.Dataset):
     
     def _aug_transform(self, data, min_crop_size):
         x, y = data
-        # random crop
-        '''
-        x: [h, w, d, c]
-        '''
-        size = [np.random.randint(min_crop_size[i], x.shape[i]) for i in range(len(x.shape)-1)] + [x.shape[-1]+y.shape[-1]]
-        data = np.concatenate([x, y], axis=-1)
-        data = tf.image.random_crop(data, size).numpy()
-        x = data[..., 0][..., None]
-        y = data[..., 1:]
         # normalize
         '''
         Normalize input to zero mean and unit standard deviation, based on non-zero elements only
@@ -119,6 +111,15 @@ class NTUH_HeartArota(datasets.Dataset):
         for c in range(x.shape[-1]):
             mu, std = x[..., c][x[..., c]!=0].mean(), x[..., c][x[..., c]!=0].std()
             x[..., c] = (x[..., c]-mu)/std
+        # random crop
+        '''
+        x: [h, w, d, c]
+        '''
+        size = [np.random.randint(min_crop_size[i], x.shape[i] if x.shape[i]<self.max_crop_size[i] else self.max_crop_size[i]) for i in range(len(x.shape)-1)] + [x.shape[-1]+y.shape[-1]]
+        data = np.concatenate([x, y], axis=-1)
+        data = tf.image.random_crop(data, size).numpy()
+        x = data[..., 0][..., None]
+        y = data[..., 1:]
         # random flip
         flip_axis = np.random.randint(0, len(x.shape))
         if flip_axis==len(x.shape)-1:
@@ -130,6 +131,9 @@ class NTUH_HeartArota(datasets.Dataset):
         scale = np.random.uniform(0, 0.1)
         shift = np.random.uniform(-0.1, 0.1)
         x = x * (1 + scale) + shift * np.std(x)
+        # pad to be divisible by 16
+        x = self._pad_div_by_n(x, n=16)
+        y = self._pad_div_by_n(y, n=16)
         return x, y
     
     def _val_transform(self, data):
@@ -142,4 +146,26 @@ class NTUH_HeartArota(datasets.Dataset):
         for c in range(x.shape[-1]):
             mu, std = x[..., c][x[..., c]!=0].mean(), x[..., c][x[..., c]!=0].std()
             x[..., c] = (x[..., c]-mu)/std
+        # crop
+        hd, hw, hh = [s//2 for s in self.max_crop_size]
+        size = x.shape[:3]
+        x = x[size[0]//2-hd if size[0]//2-hd>0 else 0:size[0]//2+hd,
+              size[1]//2-hd if size[1]//2-hd>0 else 0:size[1]//2+hd,
+              size[2]//2-hd if size[2]//2-hd>0 else 0:size[2]//2+hd]
+        y = y[size[0]//2-hd if size[0]//2-hd>0 else 0:size[0]//2+hd,
+              size[1]//2-hd if size[1]//2-hd>0 else 0:size[1]//2+hd,
+              size[2]//2-hd if size[2]//2-hd>0 else 0:size[2]//2+hd]
+        # pad to be divisible by 16
+        x = self._pad_div_by_n(x, n=16)
+        y = self._pad_div_by_n(y, n=16)
         return x, y
+    
+    def _pad_div_by_n(self, x, n=16):
+        '''
+        x: [h, w, d, c]
+        '''
+        ori_size = x.shape[:3]
+        new_size = [s+16-s%16 for s in ori_size]
+        paddings = np.array([[(n-o)//2, (n-o)-(n-o)//2] for o, n in zip(ori_size, new_size)]+[[0, 0]])
+        new_x = tf.pad(x, paddings, 'CONSTANT', constant_values=0).numpy()
+        return new_x
