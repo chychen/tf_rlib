@@ -27,7 +27,11 @@ class SegmentationRunner(runner.Runner):
                                                  best_state='dice_coef')
 
     def init(self):
-        self.model = net()
+        if FLAGS.dim>2:
+            init_filters = 6
+        else:
+            init_filters = 32
+        self.model = net(init_filters=init_filters)
         train_metrics = {
             'loss': tf.keras.metrics.Mean('loss'),
             'dice_coef': DiceCoefficient()
@@ -99,7 +103,7 @@ class SegmentationRunner(runner.Runner):
 
     @property
     def required_flags(self):
-        return ['dim', 'out_dim', 'bs']
+        return ['dim', 'out_dim', 'bs', 'conv_norm', 'groups']
 
     @property
     def support_amp(self):
