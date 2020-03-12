@@ -23,7 +23,7 @@ RUN jupyter labextension install @jupyter-widgets/jupyterlab-manager
 RUN pip install jupyterlab-nvdashboard
 RUN jupyter labextension install jupyterlab-nvdashboard
 
-RUN pip install tqdm sklearn yapf pytz tensorflow_datasets tensorflow-addons pandas seaborn pillow tensorflow_hub
+RUN pip install tqdm sklearn yapf pytz tensorflow_datasets tensorflow-addons pandas seaborn pillow tensorflow_hub nibabel
 
 EXPOSE 6006
 EXPOSE 8888
