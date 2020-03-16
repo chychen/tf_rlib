@@ -1,6 +1,6 @@
 import tensorflow as tf
 from tensorflow.keras.mixed_precision import experimental as mixed_precision
-from tf_rlib.models import ResNet_Cifar10
+from tf_rlib.models import ResNet18
 from tf_rlib.runners.base import runner
 # from tf_rlib.datasets import Cifar10RandAugment as Cifar10
 from tf_rlib.datasets import Cifar10
@@ -40,7 +40,7 @@ class ClassificationResNet18Cifar10(runner.Runner):
         self.fit(300, 1e-1)
 
     def init(self):
-        self.model = ResNet_Cifar10([2, 2, 2, 2])
+        self.model = ResNet18()
         train_metrics = {
             'loss': tf.keras.metrics.Mean('loss'),
             'acc': tf.keras.metrics.SparseCategoricalAccuracy('acc')

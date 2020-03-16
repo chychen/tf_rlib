@@ -25,6 +25,11 @@ LOGGER = logging.get_absl_logger()
 
 
 class Cifar10vsSVHN(datasets.Dataset):
+    """ [Novelty Detection Via Blurring](https://arxiv.org/abs/1911.11943)
+    Cifar10:SVHN (Target:OOD)
+        train: 50000 Cifar10
+        test: 10000 Cifar10 + 10000 SVHN
+    """
     def __init__(self):
         super(Cifar10vsSVHN, self).__init__()
 

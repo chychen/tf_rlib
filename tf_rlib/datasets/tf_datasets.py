@@ -20,28 +20,35 @@ class SVHN(datasets.Dataset):
 
     def get_data(self):
         dset_all, info = tfds.load("svhn_cropped:3.0.0",
-                                with_info=True,
-                                split=['train', 'test'])
+                                   with_info=True,
+                                   split=['train', 'test'])
         train_dataset, test_dataset = dset_all
-        
+
         def parse(example):
             x = tf.cast(example['image'], tf.float32)
-            x = (x/128.0)-1.0
+            x = (x / 128.0) - 1.0
             return x, example['label']
-        
+
         def augment(x, y):
             x = tf.image.resize_with_crop_or_pad(x, 32 + 4 * 2, 32 + 4 * 2)
             x = tf.image.random_crop(x, [32, 32, 3])
             x = tf.image.random_flip_left_right(x)
             return x, y
 
-        train_dataset = train_dataset.map(parse,num_parallel_calls=tf.data.experimental.AUTOTUNE).cache().map(augment,num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(5000).batch(
-                FLAGS.bs, drop_remainder=True).prefetch(
-                    buffer_size=tf.data.experimental.AUTOTUNE)
-        test_dataset = test_dataset.map(parse,num_parallel_calls=tf.data.experimental.AUTOTUNE).cache().batch(
+        train_dataset = train_dataset.map(
+            parse,
+            num_parallel_calls=tf.data.experimental.AUTOTUNE).cache().map(
+                augment,
+                num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(
+                    5000).batch(FLAGS.bs, drop_remainder=True).prefetch(
+                        buffer_size=tf.data.experimental.AUTOTUNE)
+        test_dataset = test_dataset.map(
+            parse,
+            num_parallel_calls=tf.data.experimental.AUTOTUNE).cache().batch(
                 FLAGS.bs, drop_remainder=False).prefetch(
                     buffer_size=tf.data.experimental.AUTOTUNE)
         return train_dataset, test_dataset
+
 
 class Mnist(datasets.Dataset):
     def __init__(self):
@@ -428,6 +435,7 @@ class Cifar10(datasets.Dataset):
                 FLAGS.bs, drop_remainder=False).prefetch(
                     buffer_size=tf.data.experimental.AUTOTUNE)
         return [train_dataset, valid_dataset]
+
 
 class Cifar10RandAugment(datasets.Dataset):
     def __init__(self):

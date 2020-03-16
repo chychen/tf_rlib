@@ -17,7 +17,7 @@ class ClassificationPyramidNet10Cifar10(runner.Runner):
     Model: PyramidNet10
     Epochs: 100
     Optimizer: AdamW + WeightDecay=0.0
-    Parameters: 291,482
+    Parameters: 90,554
     
     (Float32)
         Batch Size: 128
@@ -26,7 +26,7 @@ class ClassificationPyramidNet10Cifar10(runner.Runner):
     (Float16, speedup about 10%~15% than float32 with such small network)
         Batch Size: 256
         Scheduled LR: 2e-3 + CosineAnealing
-        Accuracy%: 88.5%
+        Accuracy%: 87.3%~88.5%
     """
     def __init__(self):
         FLAGS.gpus = '0'
