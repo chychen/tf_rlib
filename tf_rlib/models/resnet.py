@@ -8,10 +8,15 @@ LOGGER = logging.get_absl_logger()
 
 
 class ResNet(models.Model):
-    def __init__(self, num_blocks):
+    def __init__(self, num_blocks, feature_mode=False, preact=False, last_norm=False):
+        """ By default, preact=False, last_norm=False means vanilla resnet.
+        """
         super(ResNet, self).__init__()
         self.out_dim = FLAGS.out_dim
         self.depth = FLAGS.depth
+        self.preact = preact
+        self.last_norm = last_norm
+        self.feature_mode = feature_mode
         if FLAGS.bottleneck:
             self.block = blocks.ResBottleneck
         else:
@@ -33,7 +38,7 @@ class ResNet(models.Model):
         self.head = blocks.BasicBlock(self.in_filters,
                                       self.in_ks,
                                       strides=self.in_strides,
-                                      preact=False,
+                                      preact=self.preact,
                                       use_norm=True,
                                       use_act=self.in_act_pool)
 
@@ -59,16 +64,16 @@ class ResNet(models.Model):
         all_blocks.append(
             self.block(filters,
                        strides=strides,
-                       preact=False,
-                       last_norm=False,
+                       preact=self.preact,
+                       last_norm=self.last_norm,
                        shortcut_type='project'))
         LOGGER.debug('filters: {}'.format(filters))
         for _ in range(1, num_block):
             all_blocks.append(
                 self.block(filters,
                            strides=1,
-                           preact=False,
-                           last_norm=False,
+                           preact=self.preact,
+                           last_norm=self.last_norm,
                            shortcut_type=None))
             LOGGER.debug('filters: {}'.format(filters))
         return tf.keras.Sequential(all_blocks)
@@ -79,13 +84,14 @@ class ResNet(models.Model):
             x = self.in_pool(x)
         for group in self.all_groups:
             x = group(x)
-        x = self.gpool(x)
-        x = self.flatten(x)
-        x = self.dense(x)
+        if not self.feature_mode:
+            x = self.gpool(x)
+            x = self.flatten(x)
+            x = self.dense(x)
         return x
 
 
-def ResNet18():
+def ResNet18(feature_mode=False, preact=False, last_norm=False):
     """
     Total params: 11,187,914
     Trainable params: 11,178,186
@@ -93,11 +99,11 @@ def ResNet18():
     """
     FLAGS.depth = 18
     FLAGS.bottleneck = False
-    m = ResNet([2, 2, 2, 2])
+    m = ResNet([2, 2, 2, 2], feature_mode=feature_mode, preact=preact, last_norm=last_norm)
     return m
 
 
-def ResNet34():
+def ResNet34(feature_mode=False, preact=False, last_norm=False):
     """
     Total params: 21,303,498
     Trainable params: 21,286,346
@@ -105,11 +111,11 @@ def ResNet34():
     """
     FLAGS.depth = 34
     FLAGS.bottleneck = False
-    m = ResNet([3, 4, 6, 3])
+    m = ResNet([3, 4, 6, 3], feature_mode=feature_mode, preact=preact, last_norm=last_norm)
     return m
 
 
-def ResNet50():
+def ResNet50(feature_mode=False, preact=False, last_norm=False):
     """
     Total params: 23,573,962
     Trainable params: 23,520,842
@@ -117,5 +123,5 @@ def ResNet50():
     """
     FLAGS.depth = 50
     FLAGS.bottleneck = True
-    m = ResNet([3, 4, 6, 3])
+    m = ResNet([3, 4, 6, 3], feature_mode=feature_mode, preact=preact, last_norm=last_norm)
     return m
