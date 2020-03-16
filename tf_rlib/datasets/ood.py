@@ -45,28 +45,32 @@ class Cifar10vsSVHN(datasets.Dataset):
         def parse_nomal(example):
             x = tf.cast(example['image'], tf.float32)
             x = (x / 128.0) - 1.0
-            return x, tf.ones([1,], np.float32)
+            return x, tf.ones([
+                1,
+            ], np.float32)
 
         @tf.function
         def parse_abnormal(example):
             x = tf.cast(example['image'], tf.float32)
             x = (x / 128.0) - 1.0
-            return x, tf.zeros([1,], np.float32)
+            return x, tf.zeros([
+                1,
+            ], np.float32)
 
         train_dataset = cifar_train.map(
             parse_nomal,
             num_parallel_calls=tf.data.experimental.AUTOTUNE).cache().shuffle(
-                    5000).batch(FLAGS.bs, drop_remainder=True).prefetch(
-                        buffer_size=tf.data.experimental.AUTOTUNE)
+                5000).batch(FLAGS.bs, drop_remainder=True).prefetch(
+                    buffer_size=tf.data.experimental.AUTOTUNE)
         cifar_test = cifar_test.map(
             parse_nomal,
             num_parallel_calls=tf.data.experimental.AUTOTUNE).cache()
         svhn_test = svhn_test.map(
             parse_abnormal,
             num_parallel_calls=tf.data.experimental.AUTOTUNE).cache()
-        valid_dataset = cifar_test.concatenate(svhn_test).shuffle(
-                    5000).batch(FLAGS.bs, drop_remainder=True).prefetch(
-                        buffer_size=tf.data.experimental.AUTOTUNE)
+        valid_dataset = cifar_test.concatenate(svhn_test).shuffle(5000).batch(
+            FLAGS.bs, drop_remainder=True).prefetch(
+                buffer_size=tf.data.experimental.AUTOTUNE)
         return train_dataset, valid_dataset
 
 
@@ -225,12 +229,22 @@ class MVTecDS(datasets.Dataset):
             x = tf.image.random_flip_left_right(x)
             return x, y
 
-        train_ok_ds = tf.data.Dataset.from_tensor_slices((train_ok, tf.ones([len(train_ok),], dtype=tf.float32)))
+        train_ok_ds = tf.data.Dataset.from_tensor_slices(
+            (train_ok, tf.ones([
+                len(train_ok),
+            ], dtype=tf.float32)))
         # validation set = test_ok + test_ng
         test_okng = np.concatenate([test_ok, test_ng], axis=0)
-        test_y = np.concatenate([tf.ones([len(test_ok),], dtype=tf.float32), tf.zeros([len(test_ng),], dtype=tf.float32)], axis=0)
-        test_okng_ds = tf.data.Dataset.from_tensor_slices(
-            (test_okng, test_y))
+        test_y = np.concatenate([
+            tf.ones([
+                len(test_ok),
+            ], dtype=tf.float32),
+            tf.zeros([
+                len(test_ng),
+            ], dtype=tf.float32)
+        ],
+                                axis=0)
+        test_okng_ds = tf.data.Dataset.from_tensor_slices((test_okng, test_y))
 
         train_ok_ds = train_ok_ds.map(
             augmentation,

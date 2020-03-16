@@ -7,8 +7,7 @@ import random
 class RandAugment():
     def __init__(self, Numbers=None, max_Magnitude=None):
         self.transforms = [
-#             'autocontrast', 
-            'equalize', 'rotate', 'solarize', 'color',
+            'autocontrast', 'equalize', 'rotate', 'solarize', 'color',
             'posterize', 'contrast', 'brightness', 'sharpness', 'shearX',
             'shearY', 'translateX', 'translateY'
         ]
@@ -35,7 +34,7 @@ class RandAugment():
             "contrast": np.linspace(0.0, 0.5, 10),
             "sharpness": np.linspace(0.0, 0.9, 10),
             "brightness": np.linspace(0.0, 0.3, 10),
-#             "autocontrast": [0] * 10,
+            "autocontrast": [0] * 10,
             "equalize": [0] * 10,
             "invert": [0] * 10
         }
@@ -68,7 +67,7 @@ class RandAugment():
                 fill=fillcolor),
             "rotate":
             lambda img, magnitude: self.rotate_with_fill(img, magnitude),
-#             "rotate": lambda img, magnitude: img.rotate(magnitude * random.choice([-1, 1])),
+            #             "rotate": lambda img, magnitude: img.rotate(magnitude * random.choice([-1, 1])),
             "color":
             lambda img, magnitude: ImageEnhance.Color(img).enhance(
                 1 + magnitude * random.choice([-1, 1])),
@@ -85,8 +84,8 @@ class RandAugment():
             "brightness":
             lambda img, magnitude: ImageEnhance.Brightness(img).enhance(
                 1 + magnitude * random.choice([-1, 1])),
-#             "autocontrast":
-#             lambda img, magnitude: ImageOps.autocontrast(img),
+            "autocontrast":
+            lambda img, magnitude: ImageOps.autocontrast(img),
             "equalize":
             lambda img, magnitude: img,
             "invert":

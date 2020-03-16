@@ -450,11 +450,13 @@ class Cifar10RandAugment(datasets.Dataset):
         valid_data_y = valid_data[1]
         LOGGER.info('mean:{}, std:{}'.format(mean, stddev))
 
+        @tf.function(autograph=False)
         def augmentation(x, y):
             def my_numpy_func(x):
                 x = Image.fromarray(np.uint8(x))
                 x = self.img_augment(x)
-                x = tf.keras.preprocessing.image.img_to_array(x)
+                x = tf.keras.preprocessing.image.img_to_array(
+                    x, data_format='channels_last', dtype=np.float32)
                 return x
 
             x = tf.numpy_function(my_numpy_func, [x], tf.float32)
