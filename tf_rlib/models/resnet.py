@@ -8,11 +8,7 @@ LOGGER = logging.get_absl_logger()
 
 
 class ResNet(models.Model):
-    def __init__(self,
-                 num_blocks,
-                 feature_mode=False,
-                 preact=False,
-                 last_norm=False):
+    def __init__(self, num_blocks, feature_mode=False, preact=False, last_norm=False):
         """ By default, preact=False, last_norm=False means vanilla resnet.
         """
         super(ResNet, self).__init__()
@@ -59,9 +55,10 @@ class ResNet(models.Model):
                                   num_blocks[i],
                                   strides=2))
 
-        self.gpool = layers.GlobalPooling()
-        self.flatten = tf.keras.layers.Flatten()
-        self.dense = layers.Dense(self.out_dim, activation=None, use_bias=True)
+        if not self.feature_mode:
+            self.gpool = layers.GlobalPooling()
+            self.flatten = tf.keras.layers.Flatten()
+            self.dense = layers.Dense(self.out_dim, activation=None, use_bias=True)
 
     def _build_group(self, filters, num_block, strides):
         all_blocks = []
@@ -103,10 +100,7 @@ def ResNet18(feature_mode=False, preact=False, last_norm=False):
     """
     FLAGS.depth = 18
     FLAGS.bottleneck = False
-    m = ResNet([2, 2, 2, 2],
-               feature_mode=feature_mode,
-               preact=preact,
-               last_norm=last_norm)
+    m = ResNet([2, 2, 2, 2], feature_mode=feature_mode, preact=preact, last_norm=last_norm)
     return m
 
 
@@ -118,10 +112,7 @@ def ResNet34(feature_mode=False, preact=False, last_norm=False):
     """
     FLAGS.depth = 34
     FLAGS.bottleneck = False
-    m = ResNet([3, 4, 6, 3],
-               feature_mode=feature_mode,
-               preact=preact,
-               last_norm=last_norm)
+    m = ResNet([3, 4, 6, 3], feature_mode=feature_mode, preact=preact, last_norm=last_norm)
     return m
 
 
@@ -133,8 +124,5 @@ def ResNet50(feature_mode=False, preact=False, last_norm=False):
     """
     FLAGS.depth = 50
     FLAGS.bottleneck = True
-    m = ResNet([3, 4, 6, 3],
-               feature_mode=feature_mode,
-               preact=preact,
-               last_norm=last_norm)
+    m = ResNet([3, 4, 6, 3], feature_mode=feature_mode, preact=preact, last_norm=last_norm)
     return m
