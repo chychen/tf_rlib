@@ -4,6 +4,7 @@ from tensorflow.keras.mixed_precision import experimental as mixed_precision
 from tf_rlib.models import PyramidNet
 from tf_rlib.runners.base import runner
 from tf_rlib.datasets import Cifar10
+from tf_rlib import utils
 from absl import flags
 from absl import logging
 import numpy as np
@@ -29,7 +30,7 @@ class ClassificationPyramidNet10Cifar10(runner.Runner):
         Accuracy%: 87.3%~88.5%
     """
     def __init__(self):
-        FLAGS.gpus = '0'
+        utils.set_gpus('0')
         # pyramidnet-10
         amp_factor = 2 if FLAGS.amp else 1
         FLAGS.bs = 128 * amp_factor

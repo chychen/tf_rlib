@@ -79,3 +79,29 @@ class GlobalPooling(tf.keras.layers.Layer):
     def call(self, x):
         x = self.pooling_op(x)
         return x
+
+
+class ShortcutPoolingPadding(tf.keras.layers.Layer):
+    def __init__(self, pool_size=2):
+        super(ShortcutPoolingPadding, self).__init__()
+        downsample = ShortcutPooling(pool_size=pool_size)
+        self.pooling_op = lambda out, x: self.shortcut_padding(
+            out, x, downsample)
+
+    def call(self, out, x):
+        return self.pooling_op(out, x)
+
+    def shortcut_padding(self, out, x, downsample):
+        shortcut = downsample(x)
+
+        residual_channel = out.shape[-1]
+        shortcut_channel = shortcut.shape[-1]
+
+        if residual_channel != shortcut_channel:
+            padding = [
+                [0, 0],
+            ] * (FLAGS.dim + 1) + [
+                [0, tf.abs(residual_channel - shortcut_channel)],
+            ]
+            shortcut = tf.pad(shortcut, padding, "CONSTANT")
+        return shortcut

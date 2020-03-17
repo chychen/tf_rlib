@@ -5,22 +5,6 @@ from absl import flags
 FLAGS = flags.FLAGS
 
 
-def shortcut_padding(out, x, downsample):
-    shortcut = downsample(x)
-
-    residual_channel = out.shape[-1]
-    shortcut_channel = shortcut.shape[-1]
-
-    if residual_channel != shortcut_channel:
-        padding = [
-            [0, 0],
-        ] * (FLAGS.dim + 1) + [
-            [0, tf.abs(residual_channel - shortcut_channel)],
-        ]
-        shortcut = tf.pad(shortcut, padding, "CONSTANT")
-    return shortcut
-
-
 class ResBlock(blocks.Block):
     outchannel_ratio = 1
 
@@ -34,6 +18,7 @@ class ResBlock(blocks.Block):
         super(ResBlock, self).__init__(filters, strides=strides)
         self.strides = strides
         self.last_norm = last_norm
+        self.preact = preact
         self.shortcut_type = shortcut_type
         self.pool = pool
         if self.pool:
@@ -49,13 +34,12 @@ class ResBlock(blocks.Block):
                                      strides=1,
                                      preact=preact,
                                      use_norm=True,
-                                     use_act=True)
-        if self.last_norm:
-            self.bn = layers.Norm()
+                                     use_act=True,
+                                     last_norm=last_norm)
         if self.shortcut_type == 'pad':
             if pool:
                 raise ValueError
-            self.downsample = layers.ShortcutPooling(pool_size=strides)
+            self.shortcut = layers.ShortcutPoolingPadding(pool_size=strides)
         elif self.shortcut_type == 'project':
             self.shortcut = blocks.BasicBlock(
                 filters,
@@ -63,19 +47,20 @@ class ResBlock(blocks.Block):
                 strides=strides if not pool else 1,
                 preact=preact,
                 use_norm=True,
-                use_act=False)
+                use_act=False,
+                last_norm=last_norm)
 
     def call(self, x):
-        if self.pool:
-            x = self.pool_lay(x)
-        out = self.bk1(x)
+        out = self.pool_lay(x) if self.pool else x
+        out = self.bk1(out)
         out = self.bk2(out)
-        if self.last_norm:
-            out = self.bn(out)
         if self.shortcut_type == 'pad':
-            out = out + shortcut_padding(out, x, self.downsample)
+            shortcut = self.shortcut(out, x)
         elif self.shortcut_type == 'project':
-            out = out + self.shortcut(x)
+            shortcut = self.shortcut(x)
+        else:
+            shortcut = x
+        out = out + shortcut
         return out
 
 
@@ -113,13 +98,13 @@ class ResBottleneck(blocks.Block):
                                      strides=1,
                                      preact=preact,
                                      use_norm=True,
-                                     use_act=True)
-        if self.last_norm:
-            self.bn = layers.Norm()
+                                     use_act=True,
+                                     last_norm=last_norm)
         if self.shortcut_type == 'pad':
             if pool:
                 raise ValueError
-            self.downsample = layers.ShortcutPooling(pool_size=strides)
+            self.shortcut_pad = layers.ShortcutPoolingPadding(
+                pool_size=strides)
         elif self.shortcut_type == 'project':
             self.shortcut = blocks.BasicBlock(
                 filters * ResBottleneck.outchannel_ratio,
@@ -127,18 +112,19 @@ class ResBottleneck(blocks.Block):
                 strides=strides if not pool else 1,
                 preact=preact,
                 use_norm=True,
-                use_act=False)
+                use_act=False,
+                last_norm=last_norm)
 
     def call(self, x):
-        if self.pool:
-            x = self.pool_lay(x)
-        out = self.bk1(x)
+        out = self.pool_lay(x) if self.pool else x
+        out = self.bk1(out)
         out = self.bk2(out)
         out = self.bk3(out)
-        if self.last_norm:
-            out = self.bn(out)
         if self.shortcut_type == 'pad':
-            out = out + shortcut_padding(out, x, self.downsample)
+            shortcut = self.shortcut(out, x)
         elif self.shortcut_type == 'project':
-            out = out + self.shortcut(x)
+            shortcut = self.shortcut(x)
+        else:
+            shortcut = x
+        out = out + shortcut
         return out
