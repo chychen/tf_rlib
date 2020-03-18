@@ -18,7 +18,10 @@ def save_as_SavedModel(runner, path):
         tf_rlib.utils.set_amp(False)
         # initialize the model with float32
         runner.init()
-        runner.model(runner.model_inputs[0])
+        if len(runner.model_inputs)==1:
+            runner.model(runner.model_inputs[0])
+        else:
+            runner.model(runner.model_inputs)
         load_weights(runner, './temp.h5')
         os.system('rm ./temp.h5')
     runner.model.save(path, save_format='tf')
