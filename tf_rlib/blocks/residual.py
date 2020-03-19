@@ -23,12 +23,29 @@ class ResBlock(blocks.Block):
         self.pool = pool
         if self.pool:
             self.pool_lay = layers.Pooling(pool_size=strides)
-        self.bk1 = blocks.BasicBlock(filters,
-                                     3,
-                                     strides=strides if not pool else 1,
-                                     preact=preact,
-                                     use_norm=True,
-                                     use_act=False)
+        if self.shortcut_type == 'project' and self.preact:  # such as preact-resnet
+            self.bn1 = layers.Norm()
+            self.act1 = layers.Act()
+            self.bk1 = blocks.BasicBlock(filters,
+                                         3,
+                                         strides=strides if not pool else 1,
+                                         preact=False,
+                                         use_norm=False,
+                                         use_act=False)
+        elif self.shortcut_type == 'pad' and self.preact:  # such as pyramidnet
+            self.bk1 = blocks.BasicBlock(filters,
+                                         3,
+                                         strides=strides if not pool else 1,
+                                         preact=preact,
+                                         use_norm=True,
+                                         use_act=False)  # no act
+        else:  # resnet or preact_resnet
+            self.bk1 = blocks.BasicBlock(filters,
+                                         3,
+                                         strides=strides if not pool else 1,
+                                         preact=preact,
+                                         use_norm=True,
+                                         use_act=True)
         self.bk2 = blocks.BasicBlock(filters,
                                      3,
                                      strides=1,
@@ -46,11 +63,13 @@ class ResBlock(blocks.Block):
                 1,
                 strides=strides if not pool else 1,
                 preact=preact,
-                use_norm=True,
-                use_act=False,
-                last_norm=last_norm)
+                use_norm=False if preact else True,
+                use_act=False if preact else True,
+                last_norm=False)
 
     def call(self, x):
+        if self.shortcut_type == 'project' and self.preact:
+            x = self.act1(self.bn1(x))
         out = self.pool_lay(x) if self.pool else x
         out = self.bk1(out)
         out = self.bk2(out)
@@ -81,12 +100,29 @@ class ResBottleneck(blocks.Block):
         self.pool = pool
         if self.pool:
             self.pool_lay = layers.Pooling(pool_size=strides)
-        self.bk1 = blocks.BasicBlock(filters,
-                                     1,
-                                     strides=1,
-                                     preact=preact,
-                                     use_norm=True,
-                                     use_act=False)
+        if self.shortcut_type == 'project' and self.preact:  # such as preact-resnet
+            self.bn1 = layers.Norm()
+            self.act1 = layers.Act()
+            self.bk1 = blocks.BasicBlock(filters,
+                                         1,
+                                         strides=1,
+                                         preact=False,
+                                         use_norm=False,
+                                         use_act=False)
+        elif self.shortcut_type == 'pad' and self.preact:  # such as pyramidnet
+            self.bk1 = blocks.BasicBlock(filters,
+                                         1,
+                                         strides=1,
+                                         preact=preact,
+                                         use_norm=True,
+                                         use_act=False)  # no act
+        else:  # resnet or preact_resnet
+            self.bk1 = blocks.BasicBlock(filters,
+                                         1,
+                                         strides=1,
+                                         preact=preact,
+                                         use_norm=True,
+                                         use_act=True)
         self.bk2 = blocks.BasicBlock(filters,
                                      3,
                                      strides=strides if not pool else 1,
@@ -111,11 +147,13 @@ class ResBottleneck(blocks.Block):
                 1,
                 strides=strides if not pool else 1,
                 preact=preact,
-                use_norm=True,
-                use_act=False,
-                last_norm=last_norm)
+                use_norm=False if preact else True,
+                use_act=False if preact else True,
+                last_norm=False)
 
     def call(self, x):
+        if self.shortcut_type == 'project' and self.preact:
+            x = self.act1(self.bn1(x))
         out = self.pool_lay(x) if self.pool else x
         out = self.bk1(out)
         out = self.bk2(out)
