@@ -8,10 +8,46 @@ from absl import flags, logging
 from tqdm.auto import tqdm
 from PIL import Image
 from tf_rlib import datasets
-from tf_rlib.datasets.randaugment import RandAugment
+from tf_rlib.datasets.augmentation import RandAugment
 
 FLAGS = flags.FLAGS
 LOGGER = logging.get_absl_logger()
+
+
+class SVHN(datasets.Dataset):
+    def __init__(self):
+        super(SVHN, self).__init__()
+
+    def get_data(self):
+        dset_all, info = tfds.load("svhn_cropped:3.0.0",
+                                   with_info=True,
+                                   split=['train', 'test'])
+        train_dataset, test_dataset = dset_all
+
+        def parse(example):
+            x = tf.cast(example['image'], tf.float32)
+            x = (x / 128.0) - 1.0
+            return x, example['label']
+
+        def augment(x, y):
+            x = tf.image.resize_with_crop_or_pad(x, 32 + 4 * 2, 32 + 4 * 2)
+            x = tf.image.random_crop(x, [32, 32, 3])
+            x = tf.image.random_flip_left_right(x)
+            return x, y
+
+        train_dataset = train_dataset.map(
+            parse,
+            num_parallel_calls=tf.data.experimental.AUTOTUNE).cache().map(
+                augment,
+                num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(
+                    5000).batch(FLAGS.bs, drop_remainder=True).prefetch(
+                        buffer_size=tf.data.experimental.AUTOTUNE)
+        test_dataset = test_dataset.map(
+            parse,
+            num_parallel_calls=tf.data.experimental.AUTOTUNE).cache().batch(
+                FLAGS.bs, drop_remainder=False).prefetch(
+                    buffer_size=tf.data.experimental.AUTOTUNE)
+        return train_dataset, test_dataset
 
 
 class Mnist(datasets.Dataset):
@@ -37,14 +73,13 @@ class Mnist(datasets.Dataset):
         test_images[test_images < .5] = 0.
 
         TRAIN_BUF = 60000
-        TEST_BUF = 10000
 
         train_dataset = tf.data.Dataset.from_tensor_slices(
             (train_images, train_images)).cache().shuffle(TRAIN_BUF).batch(
                 FLAGS.bs, drop_remainder=True).prefetch(
                     buffer_size=tf.data.experimental.AUTOTUNE)
         test_dataset = tf.data.Dataset.from_tensor_slices(
-            (test_images, test_images)).cache().shuffle(TEST_BUF).batch(
+            (test_images, test_images)).cache().batch(
                 FLAGS.bs, drop_remainder=False).prefetch(
                     buffer_size=tf.data.experimental.AUTOTUNE)
         return train_dataset, test_dataset
@@ -402,67 +437,6 @@ class Cifar10(datasets.Dataset):
         return [train_dataset, valid_dataset]
 
 
-class Cifar10_OneClass(datasets.Dataset):
-    def __init__(self):
-        super(Cifar10_OneClass, self).__init__()
-
-    def get_data(self, target_idx):
-        return self._get_dsets(target_idx)
-
-    def _get_dsets(self, target_idx):
-        """
-        target_idx(int): ranged from 0~9
-        """
-        train_data, valid_data = tf.keras.datasets.cifar10.load_data()
-        train_data_x = train_data[0].astype(np.float32)
-        valid_data_x = valid_data[0].astype(np.float32)
-        mean = train_data_x.mean(axis=(0, 1, 2))
-        stddev = train_data_x.std(axis=(0, 1, 2))
-        train_data_x = (train_data_x - mean) / stddev
-        valid_data_x = (valid_data_x - mean) / stddev
-        train_data_y = train_data[1]
-        valid_data_y = valid_data[1]
-        LOGGER.info('mean:{}, std:{}'.format(mean, stddev))
-
-        # select target
-        train_target = train_data_x[np.argwhere(train_data_y == target_idx)[:,
-                                                                            0]]
-        valid_target = valid_data_x[np.argwhere(valid_data_y == target_idx)[:,
-                                                                            0]]
-        #         train_others = valid_data_x[np.argwhere(train_data_y != target_idx)[:,0]]
-        valid_others = valid_data_x[np.argwhere(valid_data_y != target_idx)[:,
-                                                                            0]]
-
-        train_x = train_target
-        train_y = np.ones([len(train_target), 1], np.float32)
-        valid_x = np.concatenate([valid_target, valid_others], axis=0)
-        valid_y = np.concatenate([
-            np.ones([len(valid_target), 1], np.float32),
-            np.zeros([len(valid_others), 1], np.float32)
-        ],
-                                 axis=0)
-
-        @tf.function
-        def augmentation(x, y, pad=4):
-            x = tf.image.resize_with_crop_or_pad(x, 32 + pad * 2, 32 + pad * 2)
-            x = tf.image.random_crop(x, [32, 32, 3])
-            x = tf.image.random_flip_left_right(x)
-            return x, y
-
-        train_dataset = tf.data.Dataset.from_tensor_slices((train_x, train_y))
-        valid_dataset = tf.data.Dataset.from_tensor_slices((valid_x, valid_y))
-        train_dataset = train_dataset.cache().map(
-            augmentation,
-            num_parallel_calls=tf.data.experimental.AUTOTUNE).shuffle(
-                len(train_target)).batch(
-                    FLAGS.bs, drop_remainder=True).prefetch(
-                        buffer_size=tf.data.experimental.AUTOTUNE)
-        valid_dataset = valid_dataset.cache().batch(
-            FLAGS.bs, drop_remainder=False).prefetch(
-                buffer_size=tf.data.experimental.AUTOTUNE)
-        return [train_dataset, valid_dataset]
-
-
 class Cifar10RandAugment(datasets.Dataset):
     def __init__(self):
         super(Cifar10RandAugment, self).__init__()
@@ -484,11 +458,13 @@ class Cifar10RandAugment(datasets.Dataset):
         valid_data_y = valid_data[1]
         LOGGER.info('mean:{}, std:{}'.format(mean, stddev))
 
+        @tf.function(autograph=False)
         def augmentation(x, y):
             def my_numpy_func(x):
                 x = Image.fromarray(np.uint8(x))
                 x = self.img_augment(x)
-                x = tf.keras.preprocessing.image.img_to_array(x)
+                x = tf.keras.preprocessing.image.img_to_array(
+                    x, data_format='channels_last', dtype=np.float32)
                 return x
 
             x = tf.numpy_function(my_numpy_func, [x], tf.float32)

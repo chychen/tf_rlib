@@ -27,7 +27,7 @@ class SegmentationRunner(runner.Runner):
                                                  best_state='dice_coef')
 
     def init(self):
-        if FLAGS.dim>2:
+        if FLAGS.dim > 2:
             init_filters = 6
         else:
             init_filters = 32

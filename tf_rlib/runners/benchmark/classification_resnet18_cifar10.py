@@ -1,9 +1,10 @@
 import tensorflow as tf
 from tensorflow.keras.mixed_precision import experimental as mixed_precision
-from tf_rlib.models import ResNet_Cifar10
+from tf_rlib.models import ResNet18
 from tf_rlib.runners.base import runner
 # from tf_rlib.datasets import Cifar10RandAugment as Cifar10
 from tf_rlib.datasets import Cifar10
+from tf_rlib import utils
 from absl import flags
 from absl import logging
 import numpy as np
@@ -11,19 +12,18 @@ import numpy as np
 FLAGS = flags.FLAGS
 
 
-class ClassificationResNet18Cifar10(runner.Runner):
+class ResNet18Cifar10(runner.Runner):
     """
     Dataset: Cifar10
     Model: ResNet-18
     Epochs: 300
     Scheduled LR: 1e-1 (1-150), 1e-2 (150-225), 1e-3 (225-300)
     Optimizer: SGD+momentum(0.9)+nesterov
-    Accuracy%: 94.31
-    Accuracy%: 94.44 (with RandAugment)
-    Parameters: 11,173,962
     """
-    def __init__(self):
-        FLAGS.gpus = '0'
+    def __init__(self, preact, last_norm):
+        self.preact = preact
+        self.last_norm = last_norm
+        utils.set_gpus('0')
         # resnet-18
         FLAGS.dim = 2
         FLAGS.out_dim = 10
@@ -32,15 +32,16 @@ class ClassificationResNet18Cifar10(runner.Runner):
         FLAGS.depth = 18
         # cifar10
         train_dataset, valid_dataset = Cifar10().get_data()
-        super(ClassificationResNet18Cifar10,
-              self).__init__(train_dataset,
-                             valid_dataset=valid_dataset,
-                             best_state='acc')
+        super(ResNet18Cifar10, self).__init__(train_dataset,
+                                              valid_dataset=valid_dataset,
+                                              best_state='acc')
         # start training
         self.fit(300, 1e-1)
 
     def init(self):
-        self.model = ResNet_Cifar10([2, 2, 2, 2])
+        self.model = ResNet18(feature_mode=False,
+                              preact=self.preact,
+                              last_norm=self.last_norm)
         train_metrics = {
             'loss': tf.keras.metrics.Mean('loss'),
             'acc': tf.keras.metrics.SparseCategoricalAccuracy('acc')
@@ -124,3 +125,34 @@ class ClassificationResNet18Cifar10(runner.Runner):
     @property
     def support_amp(self):
         return True
+
+
+class ClassificationResNet18Cifar10(ResNet18Cifar10):
+    """
+    Accuracy%: 94.31
+    Accuracy%: 94.44 (with RandAugment)
+    Parameters: 11,178,186
+    """
+    def __init__(self):
+        super(ClassificationResNet18Cifar10, self).__init__(preact=False,
+                                                            last_norm=False)
+
+
+class ClassificationResNet18PreactCifar10(ResNet18Cifar10):
+    """
+    Accuracy%: 10.00
+    Parameters: 11,176,272
+    """
+    def __init__(self):
+        super(ClassificationResNet18PreactCifar10,
+              self).__init__(preact=True, last_norm=False)
+
+
+class ClassificationResNet18PreactLastnormCifar10(ResNet18Cifar10):
+    """
+    Accuracy%: ?
+    Parameters: 11,182,032
+    """
+    def __init__(self):
+        super(ClassificationResNet18PreactLastnormCifar10,
+              self).__init__(preact=True, last_norm=True)

@@ -11,11 +11,13 @@ class BasicBlock(blocks.Block):
                  use_norm=True,
                  use_act=True,
                  use_bias=False,
+                 last_norm=False,
                  transpose=False):
         super(BasicBlock, self).__init__(filters, strides=strides)
         self.preact = preact
         self.use_norm = use_norm
         self.use_act = use_act
+        self.last_norm = last_norm
         if self.use_norm:
             self.bn = layers.Norm()
         if self.use_act:
@@ -25,6 +27,8 @@ class BasicBlock(blocks.Block):
                                 strides=strides,
                                 use_bias=use_bias,
                                 transpose=transpose)
+        if self.last_norm:
+            self.last_bn = layers.Norm()
 
     def call(self, x):
         if self.preact:
@@ -39,4 +43,6 @@ class BasicBlock(blocks.Block):
                 x = self.bn(x)
             if self.use_act:
                 x = self.act(x)
+        if self.last_norm:
+            x = self.last_bn(x)
         return x
