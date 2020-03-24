@@ -50,9 +50,9 @@ class SVHN(datasets.Dataset):
         return train_dataset, test_dataset
 
 
-class Mnist(datasets.Dataset):
+class MnistBinarized(datasets.Dataset):
     def __init__(self):
-        super(Mnist, self).__init__()
+        super(MnistBinarized, self).__init__()
 
     def get_data(self):
         (train_images, _), (test_images,
