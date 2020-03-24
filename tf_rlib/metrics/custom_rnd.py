@@ -7,7 +7,7 @@ FLAGS = flags.FLAGS
 
 
 class RNDMetrics(tf.keras.metrics.Metric):
-    def __init__(self, amount, num_threshold=200, name='RNDMetrics', **kwargs):
+    def __init__(self, amount, num_threshold=100, name='RNDMetrics', **kwargs):
         super(RNDMetrics, self).__init__(name=name, **kwargs)
         self.num_threshold = num_threshold
         self.all_scores = self.add_weight(name='all_scores',
@@ -60,8 +60,8 @@ class RNDMetrics(tf.keras.metrics.Metric):
         min_score = tf.math.reduce_min(self.all_scores)
         stepsize = (max_score - min_score) / (self.num_threshold - 1)
 
-        is_ng = tf.math.logical_not(self.all_labels)
-        is_ok = self.all_labels
+        is_ok = tf.math.logical_not(self.all_labels)
+        is_ng = self.all_labels
         for i in range(self.num_threshold):
             ths = min_score + stepsize * i
             self.tp[i].assign(
@@ -72,10 +72,10 @@ class RNDMetrics(tf.keras.metrics.Metric):
                     tf.math.logical_and(self.all_scores < ths, is_ok)))
             self.fp[i].assign(
                 tf.math.count_nonzero(
-                    tf.math.logical_and(self.all_scores >= ths, is_ng)))
+                    tf.math.logical_and(self.all_scores >= ths, is_ok)))
             self.fn[i].assign(
                 tf.math.count_nonzero(
-                    tf.math.logical_and(self.all_scores < ths, is_ok)))
+                    tf.math.logical_and(self.all_scores < ths, is_ng)))
 
         self.tpr.assign(
             tf.cast(self.tp, tf.float32) /
@@ -84,7 +84,7 @@ class RNDMetrics(tf.keras.metrics.Metric):
             tf.cast(self.tn, tf.float32) /
             tf.cast(self.tn + self.fp, tf.float32))
 
-        figure = plt.figure(figsize=(5, 5))
+        figure = plt.figure(figsize=(10, 10))
         plt.plot(self.tnr.numpy(),
                  self.tpr.numpy(),
                  marker='.',

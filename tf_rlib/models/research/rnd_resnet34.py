@@ -83,3 +83,45 @@ class RandomNet(models.Model):
         x = self.resnet34(x)
         x = self.append_blocks(x)
         return x
+
+
+# class Predictor(models.Model):
+#     def __init__(self):
+#         super(Predictor, self).__init__()
+#         self.append_blocks = self._build_append_blocks()
+
+#     def _build_append_blocks(self):
+#         layer_list = [
+#             tf.keras.layers.Flatten(),
+#             layers.Dense(20),
+#             layers.Norm(),
+#             layers.Act(),
+#             layers.Dense(1),
+#             layers.Act(),
+#         ]
+#         return self.sequential(layer_list)
+
+#     def call(self, x):
+#         x = self.append_blocks(x)
+#         return x
+
+
+# class RandomNet(models.Model):
+#     def __init__(self):
+#         super(RandomNet, self).__init__()
+#         self.append_blocks = self._build_append_blocks()
+
+#     def _build_append_blocks(self):
+#         layer_list = [
+#             tf.keras.layers.Flatten(),
+#             layers.Dense(20),
+#             layers.Norm(),
+#             layers.Act(),
+#             layers.Dense(1),
+#             layers.Act(),
+#         ]
+#         return self.sequential(layer_list)
+
+#     def call(self, x):
+#         x = self.append_blocks(x)
+#         return x

@@ -1,4 +1,6 @@
 """ OOD (out-of-distribution)
+OOD -> y=1
+ID -> y=0
 """
 import tensorflow as tf
 import tensorflow_datasets as tfds
@@ -49,11 +51,11 @@ class MnistOOD(datasets.Dataset):
                                                                             0]]
 
         train_x = train_target
-        train_y = np.ones([len(train_target), 1], np.float32)
+        train_y = np.zeros([len(train_target), 1], np.float32)
         valid_x = np.concatenate([valid_target, valid_others], axis=0)
         valid_y = np.concatenate([
-            np.ones([len(valid_target), 1], np.float32),
-            np.zeros([len(valid_others), 1], np.float32)
+            np.zeros([len(valid_target), 1], np.float32),
+            np.ones([len(valid_others), 1], np.float32)
         ],
                                  axis=0)
 
@@ -94,7 +96,7 @@ class Cifar10vsSVHN(datasets.Dataset):
         def parse_nomal(example):
             x = tf.cast(example['image'], tf.float32)
             x = (x / 128.0) - 1.0
-            return x, tf.ones([
+            return x, tf.zeros([
                 1,
             ], np.float32)
 
@@ -102,7 +104,7 @@ class Cifar10vsSVHN(datasets.Dataset):
         def parse_abnormal(example):
             x = tf.cast(example['image'], tf.float32)
             x = (x / 128.0) - 1.0
-            return x, tf.zeros([
+            return x, tf.ones([
                 1,
             ], np.float32)
 
@@ -345,11 +347,11 @@ class Cifar10OneClass(datasets.Dataset):
                                                                             0]]
 
         train_x = train_target
-        train_y = np.ones([len(train_target), 1], np.float32)
+        train_y = np.zeros([len(train_target), 1], np.float32)
         valid_x = np.concatenate([valid_target, valid_others], axis=0)
         valid_y = np.concatenate([
-            np.ones([len(valid_target), 1], np.float32),
-            np.zeros([len(valid_others), 1], np.float32)
+            np.zeros([len(valid_target), 1], np.float32),
+            np.ones([len(valid_others), 1], np.float32)
         ],
                                  axis=0)
 
