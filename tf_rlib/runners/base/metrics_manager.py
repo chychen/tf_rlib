@@ -1,6 +1,8 @@
 import os
 import time
+import io
 import numpy as np
+import matplotlib.pyplot as plt
 import tensorflow as tf
 from absl import flags, logging
 
@@ -66,13 +68,21 @@ class MetricsManager:
         tmp_msg = ''
         for key in [MetricsManager.KEY_TRAIN, MetricsManager.KEY_VALID]:
             for k, v in results[key].items():
-                tmp_msg = tmp_msg + '{}_{}: {:.4f}  '.format(key, k, v.numpy())
-                if tensorboard:
-                    with self.boards_writer[key].as_default():
-                        tf.summary.scalar(MetricsManager.TAG_METRICS +
-                                          self.metrics[key][k].name,
-                                          v,
-                                          step=epoch)
+                if len(v.shape) != 4:
+                    tmp_msg = tmp_msg + '{}_{}: {:.4f}  '.format(
+                        key, k, v.numpy())
+                    if tensorboard:
+                        with self.boards_writer[key].as_default():
+                            tf.summary.scalar(MetricsManager.TAG_METRICS +
+                                              self.metrics[key][k].name,
+                                              v,
+                                              step=epoch)
+                else:
+                    if tensorboard:
+                        self.show_image(
+                            v, key, epoch, MetricsManager.TAG_METRICS +
+                            self.metrics[key][k].name)
+
         if self.train_num_batch is None or self.valid_num_batch is None:
             tmp_msg = tmp_msg + 'samples/sec: unknown\n'
         else:

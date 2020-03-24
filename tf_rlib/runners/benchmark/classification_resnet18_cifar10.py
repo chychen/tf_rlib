@@ -23,7 +23,7 @@ class ResNet18Cifar10(runner.Runner):
     def __init__(self, preact, last_norm):
         self.preact = preact
         self.last_norm = last_norm
-        utils.set_gpus('1')
+        utils.set_gpus('0')
         # resnet-18
         FLAGS.dim = 2
         FLAGS.out_dim = 10
