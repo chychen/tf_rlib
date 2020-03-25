@@ -7,8 +7,17 @@ FLAGS = flags.FLAGS
 
 
 class RNDMetrics(tf.keras.metrics.Metric):
-    def __init__(self, amount, num_threshold=100, name='RNDMetrics', **kwargs):
-        super(RNDMetrics, self).__init__(name=name, **kwargs)
+    MODE_FIGURE = 'figure'
+    MODE_TNR95TPR = 'tnr@95tpr'
+
+    def __init__(self, mode, amount, num_threshold=100, **kwargs):
+        """
+        mode(str):
+            - RNDMetrics.MODE_FIGURE: TPR-TNR image
+            - RNDMetrics.MODE_TNR95TPR: tnr@95tpr value
+        """
+        super(RNDMetrics, self).__init__(name=mode, **kwargs)
+        self.mode = mode
         self.num_threshold = num_threshold
         self.all_scores = self.add_weight(name='all_scores',
                                           shape=(amount, ),
@@ -84,26 +93,36 @@ class RNDMetrics(tf.keras.metrics.Metric):
             tf.cast(self.tn, tf.float32) /
             tf.cast(self.tn + self.fp, tf.float32))
 
-        figure = plt.figure(figsize=(10, 10))
-        plt.plot(self.tnr.numpy(),
-                 self.tpr.numpy(),
-                 marker='.',
-                 label='TPR-TNR')
-        plt.xlabel('True Negative Rate')
-        plt.ylabel('True Positive Rate')
-        plt.legend()
+        tn_95tp = self.tnr[tf.argmin(tf.math.abs(self.tpr - 0.95))]
+        if self.mode == RNDMetrics.MODE_FIGURE:
+            title = '{:.2f}% TNR @ 95% TPR\nAverage TPR:{:.2f}\nAverage TNR:{:.2f}'.format(
+                tn_95tp * 100.,
+                tf.math.reduce_mean(self.tpr) * 100.,
+                tf.math.reduce_mean(self.tnr) * 100.)
 
-        buf = io.BytesIO()
-        plt.savefig(buf, format='png')
-        # Closing the figure prevents it from being displayed directly inside
-        # the notebook.
-        plt.close(figure)
-        buf.seek(0)
-        # Convert PNG buffer to TF image
-        image = tf.image.decode_png(buf.getvalue(), channels=4)
-        # Add the batch dimension
-        image = tf.expand_dims(image, 0)
-        return image
+            figure = plt.figure(figsize=(5, 5))
+            plt.plot(self.tnr.numpy(),
+                     self.tpr.numpy(),
+                     marker='.',
+                     label='TPR-TNR')
+            plt.suptitle(title, y=1.0)
+            plt.xlabel('True Negative Rate')
+            plt.ylabel('True Positive Rate')
+            plt.legend()
+
+            buf = io.BytesIO()
+            plt.savefig(buf, format='png')
+            # Closing the figure prevents it from being displayed directly inside
+            # the notebook.
+            plt.close(figure)
+            buf.seek(0)
+            # Convert PNG buffer to TF image
+            image = tf.image.decode_png(buf.getvalue(), channels=4)
+            # Add the batch dimension
+            image = tf.expand_dims(image, 0)
+            return image
+        elif self.mode == RNDMetrics.MODE_TNR95TPR:
+            return tn_95tp
 
     def reset_states(self):
         self.all_scores.assign(tf.zeros_like(self.all_scores))

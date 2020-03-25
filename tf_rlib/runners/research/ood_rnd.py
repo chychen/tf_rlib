@@ -19,7 +19,7 @@ class OODRNDRunner(runner.Runner):
         self.valid_dataset = valid_dataset
         super(OODRNDRunner, self).__init__(train_dataset,
                                            valid_dataset=valid_dataset,
-                                           best_state='auc_roc')
+                                           best_state='tnr@95tpr')
 
     def init(self):
         valid_amount = 0
@@ -35,12 +35,12 @@ class OODRNDRunner(runner.Runner):
             'loss': tf.keras.metrics.Mean('loss'),
         }
         valid_metrics = {
-            'auc_roc':
-            tf.keras.metrics.AUC(num_thresholds=200,
-                                 curve='ROC',
-                                 name='auc_roc'),
-            'custom':
-            metrics.RNDMetrics(amount=valid_amount)
+            'figure':
+            metrics.RNDMetrics(mode=metrics.RNDMetrics.MODE_FIGURE,
+                               amount=valid_amount),
+            'tnr@95tpr':
+            metrics.RNDMetrics(mode=metrics.RNDMetrics.MODE_TNR95TPR,
+                               amount=valid_amount)
         }
         self.loss_object = losses.MSELoss()
         self.optim = tfa.optimizers.AdamW(weight_decay=FLAGS.wd,
@@ -109,8 +109,10 @@ class OODRNDRunner(runner.Runner):
         loss = self.loss_object(g, f)
         # TODO distributed-aware
         #         loss = tf.nn.compute_average_loss(loss, global_batch_size=FLAGS.bs)
-        score = tf.math.abs(tf.math.tanh(loss[..., None]) + 1.) / 2.  # TODO
-        return {'auc_roc': [y, score], 'custom': [y, loss[..., None]]}
+        return {
+            'figure': [y, loss[..., None]],
+            'tnr@95tpr': [y, loss[..., None]]
+        }
 
     def custom_log_data(self, x_batch, y_batch):
         return None

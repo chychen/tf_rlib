@@ -105,7 +105,6 @@ class RandomNet(models.Model):
 #         x = self.append_blocks(x)
 #         return x
 
-
 # class RandomNet(models.Model):
 #     def __init__(self):
 #         super(RandomNet, self).__init__()
