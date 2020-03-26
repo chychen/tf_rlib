@@ -1,4 +1,6 @@
 """ OOD (out-of-distribution)
+OOD -> y=1
+ID -> y=0
 """
 import tensorflow as tf
 import tensorflow_datasets as tfds
@@ -22,6 +24,50 @@ LOGGER = logging.get_absl_logger()
 ###########################################
 ############### AutoEncoder ###############
 ###########################################
+
+
+class MnistOOD(datasets.Dataset):
+    def __init__(self):
+        super(MnistOOD, self).__init__()
+
+    def get_data(self, target_idx):
+        """
+        target_idx(int): ranged from 0~9
+        """
+        train_data, valid_data = tf.keras.datasets.mnist.load_data()
+        train_data_x = train_data[0][..., None].astype(np.float32)
+        valid_data_x = valid_data[0][..., None].astype(np.float32)
+        train_data_y = train_data[1]
+        valid_data_y = valid_data[1]
+        # Normalizing the images to the range of [-1., 1.]
+        train_data_x = train_data_x / 128. - 1.
+        valid_data_x = valid_data_x / 128. - 1.
+        # select target
+        train_target = train_data_x[np.argwhere(train_data_y == target_idx)[:,
+                                                                            0]]
+        valid_target = valid_data_x[np.argwhere(valid_data_y == target_idx)[:,
+                                                                            0]]
+        valid_others = valid_data_x[np.argwhere(valid_data_y != target_idx)[:,
+                                                                            0]]
+
+        train_x = train_target
+        train_y = np.zeros([len(train_target), 1], np.float32)
+        valid_x = np.concatenate([valid_target, valid_others], axis=0)
+        valid_y = np.concatenate([
+            np.zeros([len(valid_target), 1], np.float32),
+            np.ones([len(valid_others), 1], np.float32)
+        ],
+                                 axis=0)
+
+        train_dataset = tf.data.Dataset.from_tensor_slices((train_x, train_y))
+        valid_dataset = tf.data.Dataset.from_tensor_slices((valid_x, valid_y))
+        train_dataset = train_dataset.cache().shuffle(len(train_target)).batch(
+            FLAGS.bs, drop_remainder=True).prefetch(
+                buffer_size=tf.data.experimental.AUTOTUNE)
+        valid_dataset = valid_dataset.cache().batch(
+            FLAGS.bs, drop_remainder=False).prefetch(
+                buffer_size=tf.data.experimental.AUTOTUNE)
+        return train_dataset, valid_dataset
 
 
 class Cifar10vsSVHN(datasets.Dataset):
@@ -50,7 +96,7 @@ class Cifar10vsSVHN(datasets.Dataset):
         def parse_nomal(example):
             x = tf.cast(example['image'], tf.float32)
             x = (x / 128.0) - 1.0
-            return x, tf.ones([
+            return x, tf.zeros([
                 1,
             ], np.float32)
 
@@ -58,14 +104,14 @@ class Cifar10vsSVHN(datasets.Dataset):
         def parse_abnormal(example):
             x = tf.cast(example['image'], tf.float32)
             x = (x / 128.0) - 1.0
-            return x, tf.zeros([
+            return x, tf.ones([
                 1,
             ], np.float32)
 
         train_dataset = cifar_train.map(
             parse_nomal,
             num_parallel_calls=tf.data.experimental.AUTOTUNE).cache().shuffle(
-                5000).batch(FLAGS.bs, drop_remainder=True).prefetch(
+                50000).batch(FLAGS.bs, drop_remainder=True).prefetch(
                     buffer_size=tf.data.experimental.AUTOTUNE)
         cifar_test = cifar_test.map(
             parse_nomal,
@@ -73,7 +119,7 @@ class Cifar10vsSVHN(datasets.Dataset):
         svhn_test = svhn_test.map(
             parse_abnormal,
             num_parallel_calls=tf.data.experimental.AUTOTUNE).cache()
-        valid_dataset = cifar_test.concatenate(svhn_test).shuffle(5000).batch(
+        valid_dataset = cifar_test.concatenate(svhn_test).shuffle(10000).batch(
             FLAGS.bs, drop_remainder=True).prefetch(
                 buffer_size=tf.data.experimental.AUTOTUNE)
         return train_dataset, valid_dataset
@@ -301,11 +347,11 @@ class Cifar10OneClass(datasets.Dataset):
                                                                             0]]
 
         train_x = train_target
-        train_y = np.ones([len(train_target), 1], np.float32)
+        train_y = np.zeros([len(train_target), 1], np.float32)
         valid_x = np.concatenate([valid_target, valid_others], axis=0)
         valid_y = np.concatenate([
-            np.ones([len(valid_target), 1], np.float32),
-            np.zeros([len(valid_others), 1], np.float32)
+            np.zeros([len(valid_target), 1], np.float32),
+            np.ones([len(valid_others), 1], np.float32)
         ],
                                  axis=0)
 

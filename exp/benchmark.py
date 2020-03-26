@@ -17,6 +17,10 @@ def main():
         runner = ClassificationPyramidNet272Cifar10()
     elif FLAGS.benchmark_runner == 'ClassificationResNet18Cifar10':
         runner = ClassificationResNet18Cifar10()
+    elif FLAGS.benchmark_runner == 'ClassificationResNet18PreactCifar10':
+        runner = ClassificationResNet18PreactCifar10()
+    elif FLAGS.benchmark_runner == 'ClassificationResNet18PreactLastnormCifar10':
+        runner = ClassificationResNet18PreactLastnormCifar10()
     elif FLAGS.benchmark_runner == 'FewShotRelationNetOmniglot':
         runner = FewShotRelationNetOmniglot()
     else:

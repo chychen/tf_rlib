@@ -28,7 +28,7 @@ class ResNet18Cifar10(runner.Runner):
         FLAGS.dim = 2
         FLAGS.out_dim = 10
         FLAGS.bs = 128
-        FLAGS.l2 = 1e-4
+        FLAGS.l2 = 5e-4
         FLAGS.depth = 18
         # cifar10
         train_dataset, valid_dataset = Cifar10().get_data()
@@ -53,7 +53,7 @@ class ResNet18Cifar10(runner.Runner):
         self.loss_object = tf.keras.losses.SparseCategoricalCrossentropy(
             from_logits=True,
             reduction=tf.keras.losses.Reduction.NONE)  # distributed-aware
-        self.optim = tf.keras.optimizers.SGD(0.0, 0.9, nesterov=True)
+        self.optim = tf.keras.optimizers.SGD(0.0, 0.9, nesterov=False)
         if FLAGS.amp:
             self.optim = mixed_precision.LossScaleOptimizer(
                 self.optim, loss_scale='dynamic')
@@ -140,7 +140,7 @@ class ClassificationResNet18Cifar10(ResNet18Cifar10):
 
 class ClassificationResNet18PreactCifar10(ResNet18Cifar10):
     """
-    Accuracy%: 10.00
+    Accuracy%: 95.00
     Parameters: 11,176,272
     """
     def __init__(self):
@@ -150,8 +150,8 @@ class ClassificationResNet18PreactCifar10(ResNet18Cifar10):
 
 class ClassificationResNet18PreactLastnormCifar10(ResNet18Cifar10):
     """
-    Accuracy%: ?
-    Parameters: 11,182,032
+    Accuracy%: 94.??
+    Parameters: 11,180,112
     """
     def __init__(self):
         super(ClassificationResNet18PreactLastnormCifar10,
