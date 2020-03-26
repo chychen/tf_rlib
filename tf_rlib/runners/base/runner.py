@@ -84,6 +84,7 @@ class Runner:
                         self.models_inputs_shape[key]
                     ]
             # weights init in first call()
+            inputs, outputs = [], []
             for key, model in self.models.items():
                 keras_input = tuple()
                 for shape in self.models_inputs_shape[key]:
@@ -91,6 +92,8 @@ class Runner:
                 if len(keras_input) == 1:
                     keras_input = keras_input[0]
                 model_outs = model(keras_input, training=False)
+                inputs.append(keras_input)
+                outputs.append(model_outs)
                 if type(model_outs) != tuple:
                     model_outs = tuple((model_outs, ))
                 outs_shapes = tuple((out.shape for out in model_outs))
@@ -98,6 +101,8 @@ class Runner:
                 LOGGER.info('model: {}, input_shape: {}'.format(
                     key, self.models_inputs_shape[key]))
                 model.summary(print_fn=LOGGER.info)
+            self.model_inputs = inputs
+            self.model_outputs = outputs
             if train_metrics is None or valid_metrics is None:
                 raise ValueError(
                     'metrics are required, Note: please use tf.keras.metrics.MeanTensor to compute the training loss, which is more efficient by avoiding redundant tain loss computing.'

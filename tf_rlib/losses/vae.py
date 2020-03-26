@@ -5,6 +5,13 @@ from tf_rlib.metrics.dice_coef import dice_coef
 import numpy as np
 
 
+def log_normal_pdf(sample, mean, logvar, raxis=1):
+    log2pi = tf.math.log(2. * np.pi)
+    return tf.reduce_sum(
+        -.5 * ((sample - mean)**2. * tf.exp(-logvar) + logvar + log2pi),
+        axis=raxis)
+
+
 class VAEGaussLoss(LossFunctionWrapper):
     """ compute the -ELBO (Evidence Lower Bound)
     """
@@ -23,13 +30,6 @@ class VAEGaussLoss(LossFunctionWrapper):
         mean = y_pred['mean']
         logvar = y_pred['logvar']
         x = y_true
-
-        def log_normal_pdf(sample, mean, logvar, raxis=1):
-            log2pi = tf.math.log(2. * np.pi)
-            return tf.reduce_sum(
-                -.5 *
-                ((sample - mean)**2. * tf.exp(-logvar) + logvar + log2pi),
-                axis=raxis)
 
         reconstruct_term = tfp.distributions.MultivariateNormalDiag(
             tf.keras.layers.Flatten()(x_logit),
@@ -61,13 +61,6 @@ class VAEBernoulliLoss(LossFunctionWrapper):
         mean = y_pred['mean']
         logvar = y_pred['logvar']
         x = y_true
-
-        def log_normal_pdf(sample, mean, logvar, raxis=1):
-            log2pi = tf.math.log(2. * np.pi)
-            return tf.reduce_sum(
-                -.5 *
-                ((sample - mean)**2. * tf.exp(-logvar) + logvar + log2pi),
-                axis=raxis)
 
         reconstruct_term = tf.nn.sigmoid_cross_entropy_with_logits(
             logits=x_logit, labels=x)
