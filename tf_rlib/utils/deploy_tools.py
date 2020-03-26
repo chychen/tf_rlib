@@ -6,25 +6,25 @@ from tensorflow.python.compiler.tensorrt import trt_convert as trt
 
 FLAGS = tf_rlib.FLAGS
 
-def save_weights(runner, path):
-    runner.model.save_weights(path)
+def save_weights(model, path):
+    model.save_weights(path)
 
-def load_weights(runner, path):
-    runner.model.load_weights(path)
+def load_weights(model, path):
+    model.load_weights(path)
     
-def save_as_SavedModel(runner, path):
-    if FLAGS.amp:
-        save_weights(runner, './temp.h5')
-        tf_rlib.utils.set_amp(False)
-        # initialize the model with float32
-        runner.init()
-        if len(runner.model_inputs)==1:
-            runner.model(runner.model_inputs[0])
-        else:
-            runner.model(runner.model_inputs)
-        load_weights(runner, './temp.h5')
-        os.system('rm ./temp.h5')
-    runner.model.save(path, save_format='tf')
+def convert_to_fp32(runner):
+    for i, model in enumerate(runner.models.values()):
+        save_weights(model, './temp'+str(i)+'.h5')
+    tf_rlib.utils.set_amp(False)
+    runner.models, _, _, _ = runner.init()
+    for i, (model, model_input) in enumerate(zip(runner.models.values(), runner.model_inputs)):
+        model(model_input)
+        load_weights(model, './temp'+str(i)+'.h5')
+    os.system('rm ./temp*.h5')
+    return runner
+    
+def save_as_SavedModel(model, path):
+    model.save(path, save_format='tf')
     
 def convert_to_TFTRT(saved_model_path, target_path,
                      max_workspace_size_bytes=1<<22,
