@@ -85,6 +85,7 @@ class RandomNet(models.Model):
         return x
 
 
+# For Mnist
 # class Predictor(models.Model):
 #     def __init__(self):
 #         super(Predictor, self).__init__()

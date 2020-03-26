@@ -13,6 +13,7 @@ from tensorflow.keras.utils import to_categorical
 from absl import flags, logging
 from tf_rlib import datasets
 from tqdm.auto import tqdm
+from tf_rlib.datasets.augmentation import SVDBlur
 
 FLAGS = flags.FLAGS
 LOGGER = logging.get_absl_logger()
@@ -110,6 +111,74 @@ class Cifar10vsSVHN(datasets.Dataset):
 
         train_dataset = cifar_train.map(
             parse_nomal,
+            num_parallel_calls=tf.data.experimental.AUTOTUNE).cache().shuffle(
+                50000).batch(FLAGS.bs, drop_remainder=True).prefetch(
+                    buffer_size=tf.data.experimental.AUTOTUNE)
+        cifar_test = cifar_test.map(
+            parse_nomal,
+            num_parallel_calls=tf.data.experimental.AUTOTUNE).cache()
+        svhn_test = svhn_test.map(
+            parse_abnormal,
+            num_parallel_calls=tf.data.experimental.AUTOTUNE).cache()
+        valid_dataset = cifar_test.concatenate(svhn_test).shuffle(10000).batch(
+            FLAGS.bs, drop_remainder=True).prefetch(
+                buffer_size=tf.data.experimental.AUTOTUNE)
+        return train_dataset, valid_dataset
+
+
+class SVDBlurCifar10vsSVHN(datasets.Dataset):
+    """ [Novelty Detection Via Blurring](https://arxiv.org/abs/1911.11943)
+    Cifar10:SVHN (Target:OOD)
+        train: 50000 Cifar10
+        test: 10000 Cifar10 + 10000 SVHN
+    """
+    def __init__(self):
+        super(SVDBlurCifar10vsSVHN, self).__init__()
+        self.svdblur = SVDBlur(singular_shape=[3, 32])
+
+    def get_data(self):
+        # cifar10: in-distribution
+        cifar, info = tfds.load("cifar10:3.0.0",
+                                with_info=True,
+                                split=['train', 'test'])
+        cifar_train, cifar_test = cifar
+        # SVHN: out-of-distribution
+        svhn, info = tfds.load("svhn_cropped:3.0.0",
+                               with_info=True,
+                               split=['train', 'test'])
+        svhn_train, svhn_test = svhn
+
+        # parse fn
+        @tf.function
+        def parse_training(example):
+            x = tf.cast(example['image'], tf.float32)
+            # SVD blur
+            blur_x = self.svdblur.blur(x, remove=FLAGS.svd_remove)
+            blur_x = (blur_x / 128.0) - 1.0
+            # vanilla
+            x = (x / 128.0) - 1.0
+            return (x, blur_x), tf.zeros([
+                1,
+            ], np.float32)
+
+        @tf.function
+        def parse_nomal(example):
+            x = tf.cast(example['image'], tf.float32)
+            x = (x / 128.0) - 1.0
+            return x, tf.zeros([
+                1,
+            ], np.float32)
+
+        @tf.function
+        def parse_abnormal(example):
+            x = tf.cast(example['image'], tf.float32)
+            x = (x / 128.0) - 1.0
+            return x, tf.ones([
+                1,
+            ], np.float32)
+
+        train_dataset = cifar_train.map(
+            parse_training,
             num_parallel_calls=tf.data.experimental.AUTOTUNE).cache().shuffle(
                 50000).batch(FLAGS.bs, drop_remainder=True).prefetch(
                     buffer_size=tf.data.experimental.AUTOTUNE)

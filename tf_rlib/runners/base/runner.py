@@ -379,8 +379,14 @@ class Runner:
         key = MetricsManager.KEY_TRAIN if training else MetricsManager.KEY_VALID
         # log images
         # vis x, y if images
-        names = ['x', 'y']
-        batches = [x_batch, y_batch]
+        names = []
+        batches = []
+        if hasattr(x_batch, 'shape'):
+            names.append('x')
+            batches.append(x_batch)
+        if hasattr(y_batch, 'shape'):
+            names.append('y')
+            batches.append(y_batch)
         # vis model outputs if they are images!
         for model_key, model in self.models.items():
             # sometime model output more than one result.
@@ -405,42 +411,43 @@ class Runner:
                 batches.append(v)
 
         # vis
-        num_vis = 3 if x_batch.shape[0] > 3 else x_batch.shape[0]
-        idx = np.random.choice(list(range(x_batch.shape[0])), num_vis)
-        for name, batch in zip(names, batches):
-            if self.strategy.num_replicas_in_sync == 1:
-                batch_local = batch
-            else:
-                batch_local = batch.values[0]
-            # randomly pick samples
-            batch_local = tf.gather(batch_local, idx, axis=0)
-            if type(batch_local) == tuple:
-                for i, sub_batch in enumerate(batch_local):
-                    # others
+        if len(batches) > 0:
+            num_vis = 3 if batches[0].shape[0] > 3 else batches[0].shape[0]
+            idx = np.random.choice(list(range(batches[0].shape[0])), num_vis)
+            for name, batch in zip(names, batches):
+                if self.strategy.num_replicas_in_sync == 1:
+                    batch_local = batch
+                else:
+                    batch_local = batch.values[0]
+                # randomly pick samples
+                batch_local = tf.gather(batch_local, idx, axis=0)
+                if type(batch_local) == tuple:
+                    for i, sub_batch in enumerate(batch_local):
+                        # others
+                        if len(sub_batch.shape) == 4 and sub_batch.shape[
+                                -1] <= 4:  # [b, w, h, c], c<4
+                            self.metrics_manager.show_image(
+                                sub_batch,
+                                key,
+                                epoch=self.global_epoch,
+                                name=name + '_tuple_{}'.format(i))
+                        # few-shot
+                        few_shot_name = ['support', 'query']
+                        if len(sub_batch.shape) == 7 and sub_batch.shape[
+                                -1] <= 4:  # [b, q, c, k, w, h, c], c<4
+                            sub_batch = tf.reshape(sub_batch,
+                                                   [-1, *sub_batch.shape[-3:]])
+                            self.metrics_manager.show_image(
+                                sub_batch,
+                                key,
+                                epoch=self.global_epoch,
+                                name=name + '_' + few_shot_name[i])
+                else:
                     if len(
-                            sub_batch.shape
-                    ) == 4 and sub_batch.shape[-1] <= 4:  # [b, w, h, c], c<4
+                            batch_local.shape
+                    ) == 4 and batch_local.shape[-1] <= 4:  # [b, w, h, c], c<4
                         self.metrics_manager.show_image(
-                            sub_batch,
+                            batch_local,
                             key,
                             epoch=self.global_epoch,
-                            name=name + '_tuple_{}'.format(i))
-                    # few-shot
-                    few_shot_name = ['support', 'query']
-                    if len(sub_batch.shape) == 7 and sub_batch.shape[
-                            -1] <= 4:  # [b, q, c, k, w, h, c], c<4
-                        sub_batch = tf.reshape(sub_batch,
-                                               [-1, *sub_batch.shape[-3:]])
-                        self.metrics_manager.show_image(
-                            sub_batch,
-                            key,
-                            epoch=self.global_epoch,
-                            name=name + '_' + few_shot_name[i])
-            else:
-                if len(
-                        batch_local.shape
-                ) == 4 and batch_local.shape[-1] <= 4:  # [b, w, h, c], c<4
-                    self.metrics_manager.show_image(batch_local,
-                                                    key,
-                                                    epoch=self.global_epoch,
-                                                    name=name)
+                            name=name)
