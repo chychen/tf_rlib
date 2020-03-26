@@ -4,7 +4,7 @@ python benchmark.py --benchmark_runner=ClassificationResNet18Cifar10
 import sys
 sys.path.append('..')
 import tf_rlib
-from tf_rlib.runners.benchmark import ClassificationResNet18Cifar10, ClassificationPyramidNet272Cifar10, ClassificationPyramidNet10Cifar10, FewShotRelationNetOmniglot
+from tf_rlib.runners.benchmark import ClassificationResNet18Cifar10, ClassificationPyramidNet272Cifar10, ClassificationPyramidNet10Cifar10, FewShotRelationNetOmniglot, ClassificationResNet18PreactCifar10, ClassificationResNet18PreactLastnormCifar10
 from absl import flags
 
 FLAGS = flags.FLAGS
@@ -17,6 +17,10 @@ def main():
         runner = ClassificationPyramidNet272Cifar10()
     elif FLAGS.benchmark_runner == 'ClassificationResNet18Cifar10':
         runner = ClassificationResNet18Cifar10()
+    elif FLAGS.benchmark_runner == 'ClassificationResNet18PreactCifar10':
+        runner = ClassificationResNet18PreactCifar10()
+    elif FLAGS.benchmark_runner == 'ClassificationResNet18PreactLastnormCifar10':
+        runner = ClassificationResNet18PreactLastnormCifar10()
     elif FLAGS.benchmark_runner == 'FewShotRelationNetOmniglot':
         runner = FewShotRelationNetOmniglot()
     else:

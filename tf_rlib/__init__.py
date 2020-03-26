@@ -87,8 +87,10 @@ flags.DEFINE_string('conv_norm', 'BatchNormalization',
                     'normalization function name')
 flags.DEFINE_float('bn_momentum', 0.9, 'momentum for BatchNormalization')
 flags.DEFINE_float('bn_epsilon', 1e-5, 'epsilon for BatchNormalization')
-flags.DEFINE_integer('groups', None,
-                     'if your norm is GroupNormalization, please set this parameter, and check your groups can be divisible by all channel numbers using GroupNormalization')
+flags.DEFINE_integer(
+    'groups', None,
+    'if your norm is GroupNormalization, please set this parameter, and check your groups can be divisible by all channel numbers using GroupNormalization'
+)
 ## Pooling
 flags.DEFINE_string('conv_pooling', 'MaxPooling',
                     'pooling for downsampling, encoding features.')

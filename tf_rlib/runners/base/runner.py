@@ -22,6 +22,7 @@ class Runner:
     - train_step()
     - validate_step() 
     - required_flags()
+    - validation_loop() # optional
     
     # optional features: default False, please overwrite it to return True if the inheritted runner supports the features.
     - support_amp()
@@ -44,6 +45,8 @@ class Runner:
 
         self.global_epoch = 0
         self.global_step = 0
+        self.train_num_batch = 0
+        self.valid_num_batch = 0
         self.save_path = FLAGS.save_path
         self.best_epoch = 0
         self.best_state = best_state
@@ -56,8 +59,11 @@ class Runner:
             if self.strategy.num_replicas_in_sync >= 1:  #TODO: BUG!!!!
                 self.train_dataset = self.strategy.experimental_distribute_dataset(
                     train_dataset)
-                self.valid_dataset = self.strategy.experimental_distribute_dataset(
-                    valid_dataset)
+                if valid_dataset is not None:
+                    self.valid_dataset = self.strategy.experimental_distribute_dataset(
+                        valid_dataset)
+                else:
+                    self.valid_dataset = valid_dataset
 
             # if shape isn't specified, use shape in dataset
             if self.models_inputs_shape is None:
@@ -72,6 +78,11 @@ class Runner:
                             x.shape[1:]
                             for x in self.train_dataset.element_spec[0]
                         ]
+            else:
+                for key in self.models_inputs_shape:
+                    self.models_inputs_shape[key] = [
+                        self.models_inputs_shape[key]
+                    ]
             # weights init in first call()
             inputs, outputs = [], []
             for key, model in self.models.items():
@@ -105,16 +116,22 @@ class Runner:
                                                      MetricsManager.KEY_VALID)
         if valid_metrics is not None:
             for k, v in valid_metrics.items():
-                if v.__class__.__name__ in metrics.__dict__:
-                    self.metrics_manager.add_metrics(
-                        k, metrics.__dict__[v.__class__.__name__](
-                            name=v.__class__.__name__ + '_' +
-                            MetricsManager.KEY_TEST), MetricsManager.KEY_TEST)
-                else:
-                    self.metrics_manager.add_metrics(
-                        k, tf.keras.metrics.__dict__[v.__class__.__name__](
-                            name=v.__class__.__name__ + '_' +
-                            MetricsManager.KEY_TEST), MetricsManager.KEY_TEST)
+                try:
+                    if v.__class__.__name__ in metrics.__dict__:
+                        self.metrics_manager.add_metrics(
+                            k, metrics.__dict__[v.__class__.__name__](
+                                name=v.__class__.__name__ + '_' +
+                                MetricsManager.KEY_TEST),
+                            MetricsManager.KEY_TEST)
+                    else:
+                        self.metrics_manager.add_metrics(
+                            k, tf.keras.metrics.__dict__[v.__class__.__name__](
+                                name=v.__class__.__name__ + '_' +
+                                MetricsManager.KEY_TEST),
+                            MetricsManager.KEY_TEST)
+                except:
+                    LOGGER.warn(
+                        '{} metric is not valid for testing mode'.format(k))
 
     def init(self):
         raise NotImplementedError
@@ -227,8 +244,8 @@ class Runner:
             for e_idx in range(0, epochs, epoch_stride):
                 is_last_run = (e_idx //
                                epoch_stride) == (epochs // epoch_stride - 1)
-                train_num_batch = 0
-                valid_num_batch = 0
+                self.train_num_batch = 0
+                self.valid_num_batch = 0
                 first_e_timer = time.time()
                 self.begin_epoch_callback(e_idx, epochs)
                 self.global_epoch = self.global_epoch + 1 * epoch_stride
@@ -245,8 +262,7 @@ class Runner:
                     'epoch/total':
                     '{}/{}'.format(self.global_epoch, global_total_epochs)
                 })
-                for train_num_batch, (x_batch, y_batch) in enumerate(
-                        self.train_dataset):
+                for _, (x_batch, y_batch) in enumerate(self.train_dataset):
                     self.global_step = self.global_step + 1
                     # train one step
                     if FLAGS.profile:
@@ -256,6 +272,7 @@ class Runner:
                     else:
                         self._train_step(x_batch, y_batch)
                     train_pbar.update(1)
+                    self.train_num_batch = self.train_num_batch + 1
 
                     # find best model by eavluating validation data on each training batch
                     if is_last_run and find_best:
@@ -266,7 +283,7 @@ class Runner:
 
                 # validate one epoch
                 if not is_last_run or not find_best:
-                    valid_num_batch = self._validation_loop(valid_pbar)
+                    self._validation_loop(valid_pbar)
 
                 # others
                 if self.global_epoch == 1:
@@ -274,22 +291,22 @@ class Runner:
                     LOGGER.warn('Time cost for first epoch: {} sec'.format(
                         time.time() - first_e_timer))
                 if e_idx == 0:
-                    train_num_batch = train_num_batch + 1
-                    valid_num_batch = valid_num_batch + 1
-                    self.metrics_manager.set_num_batch(train_num_batch,
-                                                       valid_num_batch)
+                    self.train_num_batch = self.train_num_batch + 1
+                    self.valid_num_batch = self.valid_num_batch + 1
+                    self.metrics_manager.set_num_batch(self.train_num_batch,
+                                                       self.valid_num_batch)
                     if epochs > 1:
                         train_pbar.close()
                         valid_pbar.close()
                         train_pbar = tqdm(desc='train',
                                           leave=False,
                                           dynamic_ncols=True,
-                                          total=train_num_batch,
+                                          total=self.train_num_batch,
                                           disable=not FLAGS.tqdm)
                         valid_pbar = tqdm(desc='valid',
                                           leave=False,
                                           dynamic_ncols=True,
-                                          total=valid_num_batch,
+                                          total=self.valid_num_batch,
                                           disable=not FLAGS.tqdm)
 
                 # logging
@@ -297,12 +314,16 @@ class Runner:
             self.metrics_manager.register_hparams()
 
     def _validation_loop(self, valid_pbar):
+        self.validation_loop(valid_pbar)
+
+    def validation_loop(self, valid_pbar):
         if self.valid_dataset is not None:
             for valid_num_batch, (x_batch,
                                   y_batch) in enumerate(self.valid_dataset):
                 # validate one step
                 self._validate_step(x_batch, y_batch)
                 valid_pbar.update(1)
+                self.valid_num_batch = self.valid_num_batch + 1
             if self.metrics_manager.is_better_state():
                 self.save_best()
                 self.best_epoch = self.global_epoch
@@ -313,7 +334,6 @@ class Runner:
                 self.metrics_manager.best_record
             })
             self._log_data(x_batch, y_batch, training=False)
-            return valid_num_batch
 
     def save(self, path):
         for key, model in self.models.items():

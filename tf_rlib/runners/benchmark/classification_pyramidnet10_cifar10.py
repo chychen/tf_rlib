@@ -4,6 +4,7 @@ from tensorflow.keras.mixed_precision import experimental as mixed_precision
 from tf_rlib.models import PyramidNet
 from tf_rlib.runners.base import runner
 from tf_rlib.datasets import Cifar10
+from tf_rlib import utils
 from absl import flags
 from absl import logging
 import numpy as np
@@ -17,7 +18,7 @@ class ClassificationPyramidNet10Cifar10(runner.Runner):
     Model: PyramidNet10
     Epochs: 100
     Optimizer: AdamW + WeightDecay=0.0
-    Parameters: 291,482
+    Parameters: 90,554
     
     (Float32)
         Batch Size: 128
@@ -26,10 +27,10 @@ class ClassificationPyramidNet10Cifar10(runner.Runner):
     (Float16, speedup about 10%~15% than float32 with such small network)
         Batch Size: 256
         Scheduled LR: 2e-3 + CosineAnealing
-        Accuracy%: 88.5%
+        Accuracy%: 87.3%~88.5%
     """
     def __init__(self):
-        FLAGS.gpus = '0'
+        utils.set_gpus('0')
         # pyramidnet-10
         amp_factor = 2 if FLAGS.amp else 1
         FLAGS.bs = 128 * amp_factor

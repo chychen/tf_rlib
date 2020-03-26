@@ -25,7 +25,7 @@ class VAEEncoder(models.Model):
         return self.sequential(layer_list)
 
     def reparameterize(self, mean, logvar):
-        eps = tf.random.normal(shape=[FLAGS.bs, FLAGS.latent_dim])
+        eps = tf.random.normal(shape=[tf.shape(mean)[0], FLAGS.latent_dim])
         return eps * tf.exp(logvar * .5) + mean
 
     def call(self, x):

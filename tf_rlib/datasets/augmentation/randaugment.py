@@ -67,7 +67,7 @@ class RandAugment():
                 fill=fillcolor),
             "rotate":
             lambda img, magnitude: self.rotate_with_fill(img, magnitude),
-            # "rotate": lambda img, magnitude: img.rotate(magnitude * random.choice([-1, 1])),
+            #             "rotate": lambda img, magnitude: img.rotate(magnitude * random.choice([-1, 1])),
             "color":
             lambda img, magnitude: ImageEnhance.Color(img).enhance(
                 1 + magnitude * random.choice([-1, 1])),
