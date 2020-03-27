@@ -4,4 +4,4 @@ from tf_rlib.datasets.tf_datasets import SVHN, MnistBinarized, Omniglot, Cifar10
 from tf_rlib.datasets.cell import CellSegmentation
 from tf_rlib.datasets.phm2018 import PHM2018
 from tf_rlib.datasets.bump import NVBump
-from tf_rlib.datasets.ood import Cifar10OneClass, UDMAA02FD, MVTecDS, Cifar10vsSVHN, MnistOOD
+from tf_rlib.datasets.ood import SVDBlurCifar10vsSVHN, Cifar10OneClass, UDMAA02FD, MVTecDS, Cifar10vsSVHN, MnistOOD

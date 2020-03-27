@@ -94,9 +94,10 @@ class RNDMetrics(tf.keras.metrics.Metric):
             tf.cast(self.tn + self.fp, tf.float32))
 
         tn_95tp = self.tnr[tf.argmin(tf.math.abs(self.tpr - 0.95))]
+        closest95tp = self.tpr[tf.argmin(tf.math.abs(self.tpr - 0.95))]
         if self.mode == RNDMetrics.MODE_FIGURE:
-            title = '{:.2f}% TNR @ 95% TPR\nAverage TPR:{:.2f}\nAverage TNR:{:.2f}'.format(
-                tn_95tp * 100.,
+            title = '{:.2f}% TNR @ {:.2f}% TPR\nAverage TPR:{:.2f}\nAverage TNR:{:.2f}'.format(
+                tn_95tp * 100., closest95tp * 100.,
                 tf.math.reduce_mean(self.tpr) * 100.,
                 tf.math.reduce_mean(self.tnr) * 100.)
 
