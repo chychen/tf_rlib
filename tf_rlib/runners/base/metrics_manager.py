@@ -100,8 +100,12 @@ class MetricsManager:
     def show_image(self, x, key, epoch, name='image'):
         with self.boards_writer[key].as_default():
             for i, v in enumerate(x):
+                # denorm: not actually restore them but get better vis result. (avoid clipping from tf.summary.image)
+                mav_v = tf.math.reduce_max(v)
+                min_v = tf.math.reduce_min(v)
+                denorm_v = (v - min_v) / (mav_v - min_v)
                 tf.summary.image(name + '/' + str(i),
-                                 v[None],
+                                 denorm_v[None],
                                  step=epoch,
                                  max_outputs=1)
 

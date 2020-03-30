@@ -94,7 +94,7 @@ class ResBottleneck(blocks.Block):
                  pool=False,
                  shortcut_type=None):
         super(ResBottleneck, self).__init__(filters, strides=strides)
-        self.preact = preact 
+        self.preact = preact
         self.strides = strides
         self.last_norm = last_norm
         self.shortcut_type = shortcut_type
@@ -140,8 +140,7 @@ class ResBottleneck(blocks.Block):
         if self.shortcut_type == 'pad':
             if pool:
                 raise ValueError
-            self.shortcut = layers.ShortcutPoolingPadding(
-                pool_size=strides)
+            self.shortcut = layers.ShortcutPoolingPadding(pool_size=strides)
         elif self.shortcut_type == 'project':
             self.shortcut = blocks.BasicBlock(
                 filters * ResBottleneck.outchannel_ratio,

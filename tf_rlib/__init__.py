@@ -136,7 +136,8 @@ flags.DEFINE_integer('c_way', None, 'c_way')
 flags.DEFINE_integer('k_shot', None, 'k_shot')
 
 # OodSvdRndRunner
-flags.DEFINE_integer('svd_remove', None, 'how many singular value reduced to zeros?')
+flags.DEFINE_integer('svd_remove', None,
+                     'how many singular value reduced to zeros?')
 
 #############################
 ########### RLIBS ###########

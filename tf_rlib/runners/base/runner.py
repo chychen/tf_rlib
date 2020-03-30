@@ -56,13 +56,15 @@ class Runner:
         with self._get_strategy_ctx():
             self.models, self.models_inputs_shape, train_metrics, valid_metrics = self.init(
             )
-            if self.strategy.num_replicas_in_sync >= 1:  #TODO: BUG!!!!
+            if self.strategy.num_replicas_in_sync > 1:  #TODO: BUG!!!!
                 self.train_dataset = self.strategy.experimental_distribute_dataset(
                     train_dataset)
                 if valid_dataset is not None:
                     self.valid_dataset = self.strategy.experimental_distribute_dataset(
                         valid_dataset)
-                else:
+            else:
+                self.train_dataset = train_dataset
+                if valid_dataset is not None:
                     self.valid_dataset = valid_dataset
 
             # if shape isn't specified, use shape in dataset
@@ -420,10 +422,10 @@ class Runner:
             num_vis = 3 if batches[0].shape[0] > 3 else batches[0].shape[0]
             idx = np.random.choice(list(range(batches[0].shape[0])), num_vis)
             for name, batch in zip(names, batches):
-                if self.strategy.num_replicas_in_sync == 1:
-                    batch_local = batch
-                else:
+                if self.strategy.num_replicas_in_sync > 1:
                     batch_local = batch.values[0]
+                else:
+                    batch_local = batch
                 # randomly pick samples
                 batch_local = tf.gather(batch_local, idx, axis=0)
                 if type(batch_local) == tuple:
