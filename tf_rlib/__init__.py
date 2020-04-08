@@ -35,7 +35,7 @@ flags.DEFINE_string('path_postfix', '', 'postfix after log_path')
 flags.DEFINE_string('save_path', None, 'path for ckpt files')
 flags.DEFINE_string('exp_name', 'default', 'name for this experiment')
 flags.DEFINE_string('comment', None, 'any comment?')
-flags.DEFINE_string('benchmark_runner', None, 'any comment?')
+flags.DEFINE_string('benchmark', None, 'class name of benchmark runner')
 
 # Speedup Options
 flags.DEFINE_string(

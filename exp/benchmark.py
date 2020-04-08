@@ -1,28 +1,35 @@
 """
-python benchmark.py --benchmark_runner=ClassificationResNet18Cifar10
+python benchmark.py --benchmark=Classification.ResNet18Cifar10
 """
 import sys
 sys.path.append('..')
 import tf_rlib
-from tf_rlib.runners.benchmark import ClassificationResNet18Cifar10, ClassificationPyramidNet272Cifar10, ClassificationPyramidNet10Cifar10, FewShotRelationNetOmniglot, ClassificationResNet18PreactCifar10, ClassificationResNet18PreactLastnormCifar10
+from tf_rlib.runners.benchmark import Classification
+from tf_rlib.runners.benchmark import FewShot
+from tf_rlib.runners.benchmark import OutOfDistribution
 from absl import flags
 
 FLAGS = flags.FLAGS
 
 
 def main():
-    if FLAGS.benchmark_runner is None or FLAGS.benchmark_runner == 'ClassificationPyramidNet10Cifar10':
-        runner = ClassificationPyramidNet10Cifar10()
-    elif FLAGS.benchmark_runner == 'ClassificationPyramidNet272Cifar10':
-        runner = ClassificationPyramidNet272Cifar10()
-    elif FLAGS.benchmark_runner == 'ClassificationResNet18Cifar10':
-        runner = ClassificationResNet18Cifar10()
-    elif FLAGS.benchmark_runner == 'ClassificationResNet18PreactCifar10':
-        runner = ClassificationResNet18PreactCifar10()
-    elif FLAGS.benchmark_runner == 'ClassificationResNet18PreactLastnormCifar10':
-        runner = ClassificationResNet18PreactLastnormCifar10()
-    elif FLAGS.benchmark_runner == 'FewShotRelationNetOmniglot':
-        runner = FewShotRelationNetOmniglot()
+    # Classification
+    if FLAGS.benchmark is None or FLAGS.benchmark == 'Classification.PyramidNet10Cifar10':
+        runner = Classification.PyramidNet10Cifar10()
+    elif FLAGS.benchmark == 'Classification.PyramidNet272Cifar10':
+        runner = Classification.PyramidNet272Cifar10()
+    elif FLAGS.benchmark == 'Classification.ResNet18Cifar10':
+        runner = Classification.ResNet18Cifar10()
+    elif FLAGS.benchmark == 'Classification.ResNet18PreactCifar10':
+        runner = Classification.ResNet18PreactCifar10()
+    elif FLAGS.benchmark == 'Classification.ResNet18PreactLastnormCifar10':
+        runner = Classification.ResNet18PreactLastnormCifar10()
+    # FewShot
+    elif FLAGS.benchmark == 'FewShot.RelationNetOmniglot':
+        runner = FewShot.RelationNetOmniglot()
+    # OutOfDistribution
+    elif FLAGS.benchmark == 'OutOfDistribution.SvdRndCifar10vsSVHN':
+        runner = OutOfDistribution.SvdRndCifar10vsSVHN()
     else:
         raise NotImplementedError
 
