@@ -120,7 +120,7 @@ class Cifar10vsSVHN(datasets.Dataset):
         svhn_test = svhn_test.map(
             parse_abnormal,
             num_parallel_calls=tf.data.experimental.AUTOTUNE).cache()
-        valid_dataset = cifar_test.concatenate(svhn_test).shuffle(10000).batch(
+        valid_dataset = cifar_test.concatenate(svhn_test).batch(
             FLAGS.bs, drop_remainder=True).prefetch(
                 buffer_size=tf.data.experimental.AUTOTUNE)
         return train_dataset, valid_dataset
@@ -188,7 +188,7 @@ class SVDBlurCifar10vsSVHN(datasets.Dataset):
         svhn_test = svhn_test.map(
             parse_abnormal,
             num_parallel_calls=tf.data.experimental.AUTOTUNE).cache()
-        valid_dataset = cifar_test.concatenate(svhn_test).shuffle(10000).batch(
+        valid_dataset = cifar_test.concatenate(svhn_test).batch(
             FLAGS.bs, drop_remainder=True).prefetch(
                 buffer_size=tf.data.experimental.AUTOTUNE)
         return train_dataset, valid_dataset

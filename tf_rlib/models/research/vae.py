@@ -26,15 +26,17 @@ class VAEEncoder32x32(models.Model):
         ]
         return self.sequential(layer_list)
 
-    def reparameterize(self, mean, logvar):
-        eps = tf.random.normal(shape=[tf.shape(mean)[0], FLAGS.latent_dim])
-        return eps * tf.exp(logvar * .5) + mean
+    def reparameterize(self, mean, logvar, training):
+        if training:
+            eps = tf.random.normal(shape=[tf.shape(mean)[0], FLAGS.latent_dim])
+            return eps * tf.exp(logvar * .5) + mean
+        else:
+            return mean
 
-    def call(self, x):
+    def call(self, x, training=True):
         logits = self.inference_net(x)
         mean, logvar = tf.split(logits, num_or_size_splits=2, axis=1)
-        print(mean.shape, logvar.shape)
-        z = self.reparameterize(mean, logvar)
+        z = self.reparameterize(mean, logvar, training)
         return mean, logvar, z
 
 
@@ -79,14 +81,17 @@ class VAEEncoder28x28(models.Model):
         ]
         return self.sequential(layer_list)
 
-    def reparameterize(self, mean, logvar):
-        eps = tf.random.normal(shape=[tf.shape(mean)[0], FLAGS.latent_dim])
-        return eps * tf.exp(logvar * .5) + mean
+    def reparameterize(self, mean, logvar, training):
+        if training:
+            eps = tf.random.normal(shape=[tf.shape(mean)[0], FLAGS.latent_dim])
+            return eps * tf.exp(logvar * .5) + mean
+        else:
+            return mean
 
-    def call(self, x):
+    def call(self, x, training=True):
         logits = self.inference_net(x)
         mean, logvar = tf.split(logits, num_or_size_splits=2, axis=1)
-        z = self.reparameterize(mean, logvar)
+        z = self.reparameterize(mean, logvar, training)
         return mean, logvar, z
 
 
