@@ -28,10 +28,11 @@ class OodSvdRndRunner(runner.Runner):
     Non-Trainable Parameters of 2 Random Network: 2 x 21,445,824
     """
     def __init__(self, train_dataset, valid_dataset=None):
-        super(OodSvdRndRunner,
-              self).__init__(train_dataset,
-                             valid_dataset=valid_dataset,
-                             best_state='tnr@95tpr')
+        self.train_dataset = train_dataset
+        self.valid_dataset = valid_dataset
+        super(OodSvdRndRunner, self).__init__(self.train_dataset,
+                                              valid_dataset=self.valid_dataset,
+                                              best_state='tnr@95tpr')
 
     def init(self):
         valid_amount = 0
@@ -43,12 +44,8 @@ class OodSvdRndRunner(runner.Runner):
         self.predictor = Predictor()
         self.randnet_1 = RandomNet()  # Note: fixed, not trainable
         self.randnet_2 = RandomNet()  # Note: fixed, not trainable
-        self.norm_p = layers.Norm()
-        self.norm_1 = layers.Norm()
-        self.norm_2 = layers.Norm()
         self.randnet_1.trainable = False
         self.randnet_2.trainable = False
-
         train_metrics = {
             'loss': tf.keras.metrics.Mean('loss'),
         }
@@ -68,7 +65,11 @@ class OodSvdRndRunner(runner.Runner):
                                           epsilon=FLAGS.adam_epsilon)
         if FLAGS.amp:
             self.optim = mixed_precision.LossScaleOptimizer(
-                self.optim, loss_scale='dynamic')
+                self.optim,
+                loss_scale=tf.mixed_precision.experimental.DynamicLossScale(
+                    initial_loss_scale=(2**15),
+                    increment_period=20,
+                    multiplier=2.0))
         return {
             'predictor': self.predictor,
             'randnet_1': self.randnet_1,
@@ -106,10 +107,17 @@ class OodSvdRndRunner(runner.Runner):
         """
         ori_x, blur_x = x
         with tf.GradientTape() as tape:
-            f1 = self.norm_p(self.predictor(ori_x))
-            f2 = self.norm_p(self.predictor(blur_x))
-            g1 = self.norm_1(self.randnet_1(ori_x, training=False))
-            g2 = self.norm_2(self.randnet_2(blur_x, training=False))
+            f1 = self.predictor(ori_x)
+            f2 = self.predictor(blur_x)
+            g1 = self.randnet_1(ori_x, training=False)
+            g2 = self.randnet_2(blur_x, training=False)
+
+            if FLAGS.amp:
+                f1 = tf.cast(f1, tf.float32)
+                f2 = tf.cast(f2, tf.float32)
+                g1 = tf.cast(g1, tf.float32)
+                g2 = tf.cast(g2, tf.float32)
+
             loss1 = self.loss_object(g1, f1)
             loss2 = self.loss_object(g2, f2)
             loss = (loss1 + loss2) / 2.0
@@ -118,14 +126,15 @@ class OodSvdRndRunner(runner.Runner):
             regularization_loss = tf.nn.scale_regularization_loss(
                 tf.math.add_n(self.predictor.losses))
             if FLAGS.amp:
-                regularization_loss = tf.cast(regularization_loss, tf.float16)
                 total_loss = loss + regularization_loss
                 total_loss = self.optim.get_scaled_loss(total_loss)
             else:
                 total_loss = loss + regularization_loss
-        
+
         trainable_w = []
-        for m in [self.predictor, self.norm_p, self.norm_1, self.norm_2]:
+        for m in [
+                self.predictor,
+        ]:
             trainable_w = trainable_w + m.trainable_weights
         if FLAGS.amp:
             grads = tape.gradient(total_loss, trainable_w)
@@ -143,8 +152,8 @@ class OodSvdRndRunner(runner.Runner):
         Returns:
             metrics (dict)
         """
-        f = self.norm_p(self.predictor(x, training=False), training=False)
-        g = self.norm_1(self.randnet_1(x, training=False), training=False)
+        f = self.predictor(x, training=False)
+        g = self.randnet_1(x, training=False)
         loss = self.loss_object(g, f)
         return {
             'figure': [y, loss[..., None]],

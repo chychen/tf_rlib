@@ -266,6 +266,13 @@ class Runner:
                 })
                 for _, (x_batch, y_batch) in enumerate(self.train_dataset):
                     self.global_step = self.global_step + 1
+                    if FLAGS.amp:
+                        self.metrics_manager.add_scalar(
+                            'loss_scale',
+                            self.optim.loss_scale(),
+                            self.global_step,
+                            self.metrics_manager.KEY_TRAIN,
+                            tag=self.metrics_manager.TAG_HPARAMS)
                     # train one step
                     if FLAGS.profile:
                         with profiler.Profiler(

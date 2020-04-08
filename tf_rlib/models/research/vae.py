@@ -63,7 +63,6 @@ class VAEDecoder32x32(models.Model):
         return out
 
 
-
 class VAEEncoder28x28(models.Model):
     def __init__(self):
         super(VAEEncoder28x28, self).__init__()

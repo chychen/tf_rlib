@@ -26,8 +26,8 @@ class VAERunner32x32(runner.Runner):
         if FLAGS.loss_fn is None:
             FLAGS.loss_fn = 'vae'
         super(VAERunner32x32, self).__init__(train_dataset,
-                                        valid_dataset=valid_dataset,
-                                        best_state='loss')
+                                             valid_dataset=valid_dataset,
+                                             best_state='loss')
 
     def init(self):
         input_shape = self.train_dataset.element_spec[0].shape[1:]
@@ -152,7 +152,7 @@ class VAERunner32x32(runner.Runner):
         probs = tf.sigmoid(logits)
         return probs
 
-    
+
 class VAERunner28x28(runner.Runner):
     """
     """
@@ -168,8 +168,8 @@ class VAERunner28x28(runner.Runner):
         if FLAGS.loss_fn is None:
             FLAGS.loss_fn = 'vae'
         super(VAERunner28x28, self).__init__(train_dataset,
-                                        valid_dataset=valid_dataset,
-                                        best_state='loss')
+                                             valid_dataset=valid_dataset,
+                                             best_state='loss')
 
     def init(self):
         input_shape = self.train_dataset.element_spec[0].shape[1:]

@@ -27,8 +27,8 @@ class OODVAERunner(runner.Runner):
         if FLAGS.loss_fn is None:
             FLAGS.loss_fn = 'vae'
         super(OODVAERunner, self).__init__(train_dataset,
-                                        valid_dataset=valid_dataset,
-                                        best_state='tnr@95tpr')
+                                           valid_dataset=valid_dataset,
+                                           best_state='tnr@95tpr')
 
     def init(self):
         input_shape = self.train_dataset.element_spec[0].shape[1:]
@@ -38,8 +38,12 @@ class OODVAERunner(runner.Runner):
             'loss': tf.keras.metrics.Mean('loss'),
         }
         valid_metrics = {
-            'loss': tf.keras.metrics.Mean('loss'),
-            'tnr@95tpr':tf.keras.metrics.SpecificityAtSensitivity(sensitivity=0.95, num_thresholds=200, name='tnr@95tpr')
+            'loss':
+            tf.keras.metrics.Mean('loss'),
+            'tnr@95tpr':
+            tf.keras.metrics.SpecificityAtSensitivity(sensitivity=0.95,
+                                                      num_thresholds=200,
+                                                      name='tnr@95tpr')
         }
         self.loss_object = OODVAERunner.LOSSES_POOL[FLAGS.loss_fn]()
         self.optim = tfa.optimizers.AdamW(weight_decay=FLAGS.wd,
@@ -126,14 +130,13 @@ class OODVAERunner(runner.Runner):
             loss = self.loss_object(x, x_logit)
         # distributed-aware
         loss = tf.nn.compute_average_loss(loss, global_batch_size=FLAGS.bs)
-        
+
         likelihood = tfp.distributions.MultivariateNormalDiag(
             tf.keras.layers.Flatten()(x_logit),
-            scale_identity_multiplier=0.05).prob(
-                tf.keras.layers.Flatten()(x))
+            scale_identity_multiplier=0.05).prob(tf.keras.layers.Flatten()(x))
         likelihood = tf.clip_by_value(likelihood, 0., 1.)
-        
-        return {'loss':[loss], 'tnr@95tpr': [y, 1.- likelihood[..., None]]}
+
+        return {'loss': [loss], 'tnr@95tpr': [y, 1. - likelihood[..., None]]}
 
     def custom_log_data(self, x_batch, y_batch):
         mean, logvar, z = self.encoder(x_batch, training=False)
@@ -141,7 +144,7 @@ class OODVAERunner(runner.Runner):
             x_logit = self.decoder(z, training=False)
         else:
             x_logit = self.decoder(mean, training=False)
-            
+
         normed = tf.sigmoid(x_logit)
         return {'reconstructs': normed}
 
