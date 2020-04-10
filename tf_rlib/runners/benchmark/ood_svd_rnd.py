@@ -1,7 +1,7 @@
 import tensorflow as tf
 import tensorflow_addons as tfa
 import tensorflow_hub as hub
-from tf_rlib.models.research import Predictor, RandomNet
+from tf_rlib.models.research import Predictor34 as Predictor, RandomNet34 as RandomNet
 from tf_rlib.runners.base import runner
 from tf_rlib.datasets import SVDBlurCifar10vsSVHN
 from tf_rlib import losses, metrics
