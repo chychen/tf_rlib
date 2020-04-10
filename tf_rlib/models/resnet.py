@@ -58,10 +58,10 @@ class ResNet(models.Model):
                 self._build_group(self.in_filters * (2**i),
                                   num_blocks[i],
                                   strides=2))
-        if self.preact:
-            self.preact_lastnorm = layers.Norm()
-            self.preact_act = layers.Act()
         if not self.feature_mode:
+            if self.preact:
+                self.preact_lastnorm = layers.Norm()
+                self.preact_act = layers.Act()
             self.gpool = layers.GlobalPooling()
             self.flatten = tf.keras.layers.Flatten()
             self.dense = layers.Dense(self.out_dim,

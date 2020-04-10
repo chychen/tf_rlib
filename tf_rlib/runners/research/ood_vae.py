@@ -1,7 +1,8 @@
 import tensorflow as tf
 import tensorflow_addons as tfa
+import tensorflow_probability as tfp
 import tensorflow_hub as hub
-from tf_rlib.models.research import VAEEncoder, VAEDecoder
+from tf_rlib.models.research import VAEEncoder32x32, VAEDecoder32x32
 from tf_rlib.runners.base import runner
 from tf_rlib import losses
 from absl import flags
@@ -11,36 +12,40 @@ import numpy as np
 FLAGS = flags.FLAGS
 
 
-class VAERunner(runner.Runner):
+class OODVAERunner(runner.Runner):
     """
-    Reference: [Active Authentication using an Autoencoder regularized CNN-based One-Class Classifier](https://arxiv.org/abs/1903.01031)
     """
 
     LOSSES_POOL = {
         'mse': losses.MSELoss,
         'mae': losses.MAELoss,
-        'vae': losses.VAEBernoulliLoss
+        'vae': losses.VAEGaussLoss
     }
 
     def __init__(self, train_dataset, valid_dataset=None):
         self.train_dataset = train_dataset
         if FLAGS.loss_fn is None:
             FLAGS.loss_fn = 'vae'
-        super(VAERunner, self).__init__(train_dataset,
-                                        valid_dataset=valid_dataset,
-                                        best_state='loss')
+        super(OODVAERunner, self).__init__(train_dataset,
+                                           valid_dataset=valid_dataset,
+                                           best_state='tnr@95tpr')
 
     def init(self):
         input_shape = self.train_dataset.element_spec[0].shape[1:]
-        self.encoder = VAEEncoder()
-        self.decoder = VAEDecoder()
+        self.encoder = VAEEncoder32x32()
+        self.decoder = VAEDecoder32x32()
         train_metrics = {
             'loss': tf.keras.metrics.Mean('loss'),
         }
         valid_metrics = {
-            'loss': tf.keras.metrics.Mean('loss'),
+            'loss':
+            tf.keras.metrics.Mean('loss'),
+            'tnr@95tpr':
+            tf.keras.metrics.SpecificityAtSensitivity(sensitivity=0.95,
+                                                      num_thresholds=200,
+                                                      name='tnr@95tpr')
         }
-        self.loss_object = VAERunner.LOSSES_POOL[FLAGS.loss_fn]()
+        self.loss_object = OODVAERunner.LOSSES_POOL[FLAGS.loss_fn]()
         self.optim = tfa.optimizers.AdamW(weight_decay=FLAGS.wd,
                                           lr=0.0,
                                           beta_1=FLAGS.adam_beta_1,
@@ -125,7 +130,13 @@ class VAERunner(runner.Runner):
             loss = self.loss_object(x, x_logit)
         # distributed-aware
         loss = tf.nn.compute_average_loss(loss, global_batch_size=FLAGS.bs)
-        return {'loss': [loss]}
+
+        likelihood = tfp.distributions.MultivariateNormalDiag(
+            tf.keras.layers.Flatten()(x_logit),
+            scale_identity_multiplier=0.05).prob(tf.keras.layers.Flatten()(x))
+        likelihood = tf.clip_by_value(likelihood, 0., 1.)
+
+        return {'loss': [loss], 'tnr@95tpr': [y, 1. - likelihood[..., None]]}
 
     def custom_log_data(self, x_batch, y_batch):
         mean, logvar, z = self.encoder(x_batch, training=False)
@@ -134,8 +145,8 @@ class VAERunner(runner.Runner):
         else:
             x_logit = self.decoder(mean, training=False)
 
-        x_logit = tf.sigmoid(x_logit)
-        return {'reconstructs': x_logit}
+        normed = tf.sigmoid(x_logit)
+        return {'reconstructs': normed}
 
     @property
     def required_flags(self):
@@ -150,5 +161,5 @@ class VAERunner(runner.Runner):
         if eps is None:
             eps = tf.random.normal(shape=(100, self.latent_dim))
         logits = self.decoder(eps, training=False)
-        probs = tf.sigmoid(logits)
-        return probs
+        normed = tf.sigmoid(logits)
+        return normed

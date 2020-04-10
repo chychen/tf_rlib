@@ -13,7 +13,7 @@ FLAGS = flags.FLAGS
 
 
 class ClassificationPyramidNet10Cifar10(runner.Runner):
-    """ 4 gpus training
+    """
     Dataset: Cifar10
     Model: PyramidNet10
     Epochs: 100
