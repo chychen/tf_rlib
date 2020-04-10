@@ -1,5 +1,8 @@
 import tensorflow as tf
 from tf_rlib import layers, blocks
+from absl import flags
+
+FLAGS = flags.FLAGS
 
 
 class BasicBlock(blocks.Block):
@@ -19,7 +22,8 @@ class BasicBlock(blocks.Block):
         self.use_act = use_act
         self.last_norm = last_norm
         if self.use_norm:
-            self.bn = layers.Norm()
+            norm_scale = False if 'relu' in FLAGS.conv_act.lower() else True
+            self.bn = layers.Norm(scale=norm_scale)
         if self.use_act:
             self.act = layers.Act()
         self.conv = layers.Conv(filters,

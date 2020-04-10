@@ -7,7 +7,7 @@ FLAGS = flags.FLAGS
 
 
 class Norm(tf.keras.layers.Layer):
-    def __init__(self, norm_type=None):
+    def __init__(self, norm_type=None, center=True, scale=True):
         """ By default with norm_type=None, the API is controled by FLAGS.conv_norm.
         """
         super(Norm, self).__init__()
@@ -22,11 +22,11 @@ class Norm(tf.keras.layers.Layer):
 
         if norm_type == 'BatchNormalization':
             self.norm_op = norm_op(epsilon=FLAGS.bn_epsilon,
-                                   momentum=FLAGS.bn_momentum)
+                                   momentum=FLAGS.bn_momentum, center=center, scale=scale)
         elif norm_type == 'InstanceNormalization' or norm_type == 'LayerNormalization':
-            self.norm_op = norm_op()
+            self.norm_op = norm_op(center=center, scale=scale)
         elif norm_type == 'GroupNormalization':
-            self.norm_op = norm_op(groups=FLAGS.groups)
+            self.norm_op = norm_op(groups=FLAGS.groups, center=center, scale=scale)
         else:
             raise ValueError
 
