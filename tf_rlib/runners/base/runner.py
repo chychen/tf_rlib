@@ -259,7 +259,10 @@ class Runner:
 
                 # train one epoch
                 if is_last_run and find_best:
-                    self.load_best()
+                    try:
+                        self.load_best()
+                    except:
+                        LOGGER.info('Best model not exists.')
                 train_pbar.set_postfix({
                     'epoch/total':
                     '{}/{}'.format(self.global_epoch, global_total_epochs)
@@ -288,6 +291,10 @@ class Runner:
                         if FLAGS.tqdm:
                             valid_pbar.reset()
                         self._validation_loop(valid_pbar)
+                        # logging
+                        self.metrics_manager.show_message(self.global_epoch)
+                        self.metrics_manager.reset()
+                        self.global_epoch = self.global_epoch + 1
                 self._log_data(x_batch, y_batch, training=True)
 
                 # validate one epoch
