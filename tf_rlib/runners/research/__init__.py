@@ -4,3 +4,4 @@ from tf_rlib.runners.research.segmentation_unet import SegmentationRunner
 from tf_rlib.runners.research.ood_rnd import OodRndRunner
 from tf_rlib.runners.research.ood_svdrnd import OodSvdRndRunner
 from tf_rlib.runners.research.ood_vae import OODVAERunner
+from tf_rlib.runners.research.semi_rotnet import RotNetRunner, SemiRotNetRunner

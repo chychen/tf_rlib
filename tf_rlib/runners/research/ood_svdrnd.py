@@ -102,8 +102,11 @@ class OodSvdRndRunner(runner.Runner):
             f2 = self.predictor(blur_x)
             g1 = self.randnet_1(ori_x, training=False)
             g2 = self.randnet_2(blur_x, training=False)
-            all_ = self.norm_all(tf.concat([f1, f2, g1, g2], axis=0), training=True)
-            f1, f2, g1, g2 = tf.split(all_, [FLAGS.bs,]*4, axis=0)
+            all_ = self.norm_all(tf.concat([f1, f2, g1, g2], axis=0),
+                                 training=True)
+            f1, f2, g1, g2 = tf.split(all_, [
+                FLAGS.bs,
+            ] * 4, axis=0)
 
             if FLAGS.amp:
                 f1 = tf.cast(f1, tf.float32)
@@ -147,8 +150,8 @@ class OodSvdRndRunner(runner.Runner):
         """
         f = self.norm_all(self.predictor(x, training=False), training=False)
         g = self.norm_all(self.randnet_1(x, training=False), training=False)
-#         f = self.predictor(x, training=False)
-#         g = self.randnet_1(x, training=False)
+        #         f = self.predictor(x, training=False)
+        #         g = self.randnet_1(x, training=False)
         loss = self.loss_object(g, f)
         return {
             'figure': [y, loss[..., None]],

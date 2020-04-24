@@ -6,6 +6,7 @@ from absl import flags, logging
 FLAGS = flags.FLAGS
 LOGGER = logging.get_absl_logger()
 
+
 # ResNet34
 class Predictor34(models.Model):
     def __init__(self):
@@ -63,6 +64,7 @@ class RandomNet34(models.Model):
         x = self.resnet(x)
         x = self.append_blocks(x)
         return x
+
 
 # ResNet18
 class Predictor18(models.Model):
