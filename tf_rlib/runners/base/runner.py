@@ -351,19 +351,33 @@ class Runner:
             })
             self._log_data(x_batch, y_batch, training=False)
 
-    def save(self, path):
-        for key, model in self.models.items():
-            model.save_weights(os.path.join(path, key))
+    def save(self, path, key):
+        self.models[key].save_weights(os.path.join(path, key))
 
-    def load(self, path):
-        for key, model in self.models.items():
-            model.load_weights(os.path.join(path, key))
+    def get_saved_models_path(self):
+        paths = {}
+        for key in self.models:
+            p = os.path.join(self.save_path, 'best', key)
+            paths[key] = p
+            print('{}: {}'.format(key, p))
+        return paths
+
+    def save_all(self, path):
+        for key in self.models:
+            self.save(path, key)
+
+    def load(self, path, key):
+        self.models[key].load_weights(path)
+
+    def load_all(self, path):
+        for key in self.models:
+            self.load(os.path.join(path, key))
 
     def save_best(self):
-        self.save(os.path.join(self.save_path, 'best'))
+        self.save_all(os.path.join(self.save_path, 'best'))
 
     def load_best(self):
-        self.load(os.path.join(self.save_path, 'best'))
+        self.load_all(os.path.join(self.save_path, 'best'))
 
     def log_scalar(self, name, value, training):
         key = MetricsManager.KEY_TRAIN if training else MetricsManager.KEY_VALID

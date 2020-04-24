@@ -7,6 +7,31 @@ FLAGS = flags.FLAGS
 LOGGER = logging.get_absl_logger()
 
 
+class ResNetTail(models.Model):
+    def __init__(self, preact=False, last_norm=False):
+        """ By default, preact=False, last_norm=False means vanilla resnet.
+        """
+        super(ResNetTail, self).__init__()
+        self.out_dim = FLAGS.out_dim
+        self.preact = preact
+        self.last_norm = last_norm
+
+        if self.preact:
+            self.preact_lastnorm = layers.Norm()
+            self.preact_act = layers.Act()
+        self.gpool = layers.GlobalPooling()
+        self.flatten = tf.keras.layers.Flatten()
+        self.dense = layers.Dense(self.out_dim, activation=None, use_bias=True)
+
+    def call(self, x):
+        x = self.preact_lastnorm(x) if self.preact else x
+        x = self.preact_act(x) if self.preact else x
+        x = self.gpool(x)
+        x = self.flatten(x)
+        x = self.dense(x)
+        return x
+
+
 class ResNet(models.Model):
     def __init__(self,
                  num_blocks,
@@ -59,14 +84,7 @@ class ResNet(models.Model):
                                   num_blocks[i],
                                   strides=2))
         if not self.feature_mode:
-            if self.preact:
-                self.preact_lastnorm = layers.Norm()
-                self.preact_act = layers.Act()
-            self.gpool = layers.GlobalPooling()
-            self.flatten = tf.keras.layers.Flatten()
-            self.dense = layers.Dense(self.out_dim,
-                                      activation=None,
-                                      use_bias=True)
+            self.tail = ResNetTail(self.preact, self.last_norm)
 
     def _build_group(self, filters, num_block, strides):
         all_blocks = []
@@ -94,11 +112,7 @@ class ResNet(models.Model):
         for group in self.all_groups:
             x = group(x)
         if not self.feature_mode:
-            x = self.preact_lastnorm(x) if self.preact else x
-            x = self.preact_act(x) if self.preact else x
-            x = self.gpool(x)
-            x = self.flatten(x)
-            x = self.dense(x)
+            x = self.tail(x)
         return x
 
 
