@@ -22,11 +22,15 @@ class Norm(tf.keras.layers.Layer):
 
         if norm_type == 'BatchNormalization':
             self.norm_op = norm_op(epsilon=FLAGS.bn_epsilon,
-                                   momentum=FLAGS.bn_momentum, center=center, scale=scale)
+                                   momentum=FLAGS.bn_momentum,
+                                   center=center,
+                                   scale=scale)
         elif norm_type == 'InstanceNormalization' or norm_type == 'LayerNormalization':
             self.norm_op = norm_op(center=center, scale=scale)
         elif norm_type == 'GroupNormalization':
-            self.norm_op = norm_op(groups=FLAGS.groups, center=center, scale=scale)
+            self.norm_op = norm_op(groups=FLAGS.groups,
+                                   center=center,
+                                   scale=scale)
         else:
             raise ValueError
 
