@@ -67,6 +67,10 @@ flags.DEFINE_float('adam_beta_1', 0.9, 'adam beta_1')
 flags.DEFINE_float('adam_beta_2', 0.999, 'adam beta_2')
 flags.DEFINE_float('adam_epsilon', 1e-8,
                    'adam epsilon, the larger epsilon, the closer to SGD')
+## LR Scheduler TODO early stop
+flags.DEFINE_integer('lr_factor', None, '')
+flags.DEFINE_float('lr_patience', None, '')
+
 ## Regularizer
 flags.DEFINE_float('l1', 0.0, 'l1 regularizer')
 flags.DEFINE_float('l2', 0.0, 'l2 regularizer')

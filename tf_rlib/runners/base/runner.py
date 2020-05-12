@@ -232,101 +232,106 @@ class Runner:
 
     def fit(self, epochs, lr, find_best=False):
         global_total_epochs = self.global_epoch + epochs
-        with self._get_strategy_ctx():
+        with self._get_strategy_ctx() as ctx:
             self.begin_fit_callback(lr)
-            train_pbar = tqdm(desc='train',
-                              leave=False,
-                              dynamic_ncols=True,
-                              disable=not FLAGS.tqdm)
-            valid_pbar = tqdm(desc='valid',
-                              leave=False,
-                              dynamic_ncols=True,
-                              disable=not FLAGS.tqdm)
-            epoch_stride = FLAGS.pre_augment if FLAGS.pre_augment is not None else 1
-            for e_idx in range(0, epochs, epoch_stride):
-                is_last_run = (e_idx //
-                               epoch_stride) == (epochs // epoch_stride - 1)
-                self.train_num_batch = 0
-                self.valid_num_batch = 0
-                first_e_timer = time.time()
-                self.begin_epoch_callback(e_idx, epochs)
-                self.global_epoch = self.global_epoch + 1 * epoch_stride
-                # progress bars
-                if FLAGS.tqdm:
-                    train_pbar.reset()
-                    valid_pbar.reset()
-                self.metrics_manager.reset()
+            try:
+                train_pbar = tqdm(desc='train',
+                                  leave=False,
+                                  dynamic_ncols=True,
+                                  disable=not FLAGS.tqdm)
+                valid_pbar = tqdm(desc='valid',
+                                  leave=False,
+                                  dynamic_ncols=True,
+                                  disable=not FLAGS.tqdm)
+                epoch_stride = FLAGS.pre_augment if FLAGS.pre_augment is not None else 1
+                for e_idx in range(0, epochs, epoch_stride):
+                    is_last_run = (e_idx //
+                                   epoch_stride) == (epochs // epoch_stride -
+                                                     1)
+                    self.train_num_batch = 0
+                    self.valid_num_batch = 0
+                    first_e_timer = time.time()
+                    self.begin_epoch_callback(e_idx, epochs)
+                    self.global_epoch = self.global_epoch + 1 * epoch_stride
+                    # progress bars
+                    if FLAGS.tqdm:
+                        train_pbar.reset()
+                        valid_pbar.reset()
+                    self.metrics_manager.reset()
 
-                # train one epoch
-                if is_last_run and find_best:
-                    try:
-                        self.load_best()
-                    except:
-                        LOGGER.info('Best model not exists.')
-                train_pbar.set_postfix({
-                    'epoch/total':
-                    '{}/{}'.format(self.global_epoch, global_total_epochs)
-                })
-                for _, (x_batch, y_batch) in enumerate(self.train_dataset):
-                    self.global_step = self.global_step + 1
-                    if FLAGS.amp:
-                        self.metrics_manager.add_scalar(
-                            'loss_scale',
-                            self.optim.loss_scale(),
-                            self.global_step,
-                            self.metrics_manager.KEY_TRAIN,
-                            tag=self.metrics_manager.TAG_HPARAMS)
-                    # train one step
-                    if FLAGS.profile:
-                        with profiler.Profiler(
-                                os.path.join(FLAGS.log_path, 'profile')):
-                            self._train_step(x_batch, y_batch)
-                    else:
-                        self._train_step(x_batch, y_batch)
-                    train_pbar.update(1)
-                    self.train_num_batch = self.train_num_batch + 1
-
-                    # find best model by eavluating validation data on each training batch
+                    # train one epoch
                     if is_last_run and find_best:
-                        if FLAGS.tqdm:
-                            valid_pbar.reset()
+                        try:
+                            self.load_best()
+                        except:
+                            LOGGER.info('Best model not exists.')
+                    train_pbar.set_postfix({
+                        'epoch/total':
+                        '{}/{}'.format(self.global_epoch, global_total_epochs)
+                    })
+                    for _, (x_batch, y_batch) in enumerate(self.train_dataset):
+                        self.global_step = self.global_step + 1
+                        if FLAGS.amp:
+                            self.metrics_manager.add_scalar(
+                                'loss_scale',
+                                self.optim.loss_scale(),
+                                self.global_step,
+                                self.metrics_manager.KEY_TRAIN,
+                                tag=self.metrics_manager.TAG_HPARAMS)
+                        # train one step
+                        if FLAGS.profile:
+                            with profiler.Profiler(
+                                    os.path.join(FLAGS.log_path, 'profile')):
+                                self._train_step(x_batch, y_batch)
+                        else:
+                            self._train_step(x_batch, y_batch)
+                        train_pbar.update(1)
+                        self.train_num_batch = self.train_num_batch + 1
+
+                        # find best model by eavluating validation data on each training batch
+                        if is_last_run and find_best:
+                            if FLAGS.tqdm:
+                                valid_pbar.reset()
+                            self._validation_loop(valid_pbar)
+                            # logging
+                            self.metrics_manager.show_message(
+                                self.global_epoch)
+                            self.metrics_manager.reset()
+                            self.global_epoch = self.global_epoch + 1
+                    self._log_data(x_batch, y_batch, training=True)
+
+                    # validate one epoch
+                    if not is_last_run or not find_best:
                         self._validation_loop(valid_pbar)
-                        # logging
-                        self.metrics_manager.show_message(self.global_epoch)
-                        self.metrics_manager.reset()
-                        self.global_epoch = self.global_epoch + 1
-                self._log_data(x_batch, y_batch, training=True)
 
-                # validate one epoch
-                if not is_last_run or not find_best:
-                    self._validation_loop(valid_pbar)
-
-                # others
-                if self.global_epoch == 1:
-                    LOGGER.warn('')  # new line
-                    LOGGER.warn('Time cost for first epoch: {} sec'.format(
-                        time.time() - first_e_timer))
-                if e_idx == 0:
-                    self.train_num_batch = self.train_num_batch + 1
-                    self.valid_num_batch = self.valid_num_batch + 1
-                    self.metrics_manager.set_num_batch(self.train_num_batch,
-                                                       self.valid_num_batch)
-                    if epochs > 1:
-                        train_pbar.close()
-                        valid_pbar.close()
-                        train_pbar = tqdm(desc='train',
-                                          leave=False,
-                                          dynamic_ncols=True,
-                                          total=self.train_num_batch,
-                                          disable=not FLAGS.tqdm)
-                        valid_pbar = tqdm(desc='valid',
-                                          leave=False,
-                                          dynamic_ncols=True,
-                                          total=self.valid_num_batch,
-                                          disable=not FLAGS.tqdm)
-
-                # logging
-                self.metrics_manager.show_message(self.global_epoch)
+                    # others
+                    if self.global_epoch == 1:
+                        LOGGER.warn('')  # new line
+                        LOGGER.warn('Time cost for first epoch: {} sec'.format(
+                            time.time() - first_e_timer))
+                    if e_idx == 0:
+                        self.train_num_batch = self.train_num_batch + 1
+                        self.valid_num_batch = self.valid_num_batch + 1
+                        self.metrics_manager.set_num_batch(
+                            self.train_num_batch, self.valid_num_batch)
+                        if epochs > 1:
+                            train_pbar.close()
+                            valid_pbar.close()
+                            train_pbar = tqdm(desc='train',
+                                              leave=False,
+                                              dynamic_ncols=True,
+                                              total=self.train_num_batch,
+                                              disable=not FLAGS.tqdm)
+                            valid_pbar = tqdm(desc='valid',
+                                              leave=False,
+                                              dynamic_ncols=True,
+                                              total=self.valid_num_batch,
+                                              disable=not FLAGS.tqdm)
+                    # logging
+                    self.metrics_manager.show_message(self.global_epoch)
+            except:
+                #                 ctx.close()
+                pass
             self.metrics_manager.register_hparams()
 
     def _validation_loop(self, valid_pbar):
