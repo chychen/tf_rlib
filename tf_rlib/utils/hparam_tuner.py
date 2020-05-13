@@ -87,9 +87,11 @@ class HParamTuner:
                 setattr(FLAGS, k, v)
             else:
                 raise ValueError('--{} not in FLAGS'.format(k))
-        # epochs and lr are required!!
-        if 'lr' not in trial_params or 'epochs' not in trial_params:
-            raise ValueError('--{} not in FLAGS'.format(k))
+
+
+#             # epochs and lr are required!!
+#             if 'lr' not in trial_params or 'epochs' not in trial_params:
+#                 raise ValueError('--{} not in FLAGS'.format(k))
 
         with session_num.get_lock():
             session_num.value = session_num.value + 1
