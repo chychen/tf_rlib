@@ -30,6 +30,7 @@ class ESRoPLRScheduler:
         self.factor = FLAGS.lr_factor
         self.patient = FLAGS.lr_patience
         self.patient_counter = 0
+        self.init_lr = init_lr
         self.lr = init_lr
 
     def get_lr(self):
@@ -41,7 +42,7 @@ class ESRoPLRScheduler:
                 self.patient_counter = 0
                 self.lr = self.lr * self.factor
 
-        if self.optim.learning_rate <= self.init_lr / 1e3:
+        if self.runner_ctx.optim.learning_rate <= self.init_lr / 1e3:
             LOGGER.warn('Early Stop')
             raise Exception
         return self.lr
