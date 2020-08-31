@@ -22,19 +22,25 @@ class RegHResResNet18Runner(runner.Runner):
         super(RegHResResNet18Runner,
               self).__init__(train_dataset,
                              valid_dataset=valid_dataset,
-                             best_state='loss')
+                             best_state='rmse')
 
     def init(self):
         self.model = HResResNet18(preact=True)
         train_metrics = {
-            'loss': tf.keras.metrics.MeanTensor('loss'),
-            'mse': metrics.MeanSquaredError('mse', denorm_fn=self.y_denorm_fn),
-            'mae': metrics.MeanAbsoluteError('mae', denorm_fn=self.y_denorm_fn)
+            'loss':
+            tf.keras.metrics.MeanTensor('loss'),
+            'rmse':
+            metrics.RootMeanSquaredError('rmse', denorm_fn=self.y_denorm_fn),
+            'mae':
+            metrics.MeanAbsoluteError('mae', denorm_fn=self.y_denorm_fn)
         }
         valid_metrics = {
-            'loss': tf.keras.metrics.MeanTensor('loss'),
-            'mse': metrics.MeanSquaredError('mse', denorm_fn=self.y_denorm_fn),
-            'mae': metrics.MeanAbsoluteError('mae', denorm_fn=self.y_denorm_fn)
+            'loss':
+            tf.keras.metrics.MeanTensor('loss'),
+            'rmse':
+            metrics.RootMeanSquaredError('rmse', denorm_fn=self.y_denorm_fn),
+            'mae':
+            metrics.MeanAbsoluteError('mae', denorm_fn=self.y_denorm_fn)
         }
         self.optim = tfa.optimizers.AdamW(weight_decay=FLAGS.wd,
                                           lr=0.0,
@@ -70,15 +76,19 @@ class RegHResResNet18Runner(runner.Runner):
         m = tf.concat([m, m], axis=-1)
         with tf.GradientTape() as tape:
             logits = self.model(x, training=True)
-            loss = tf.reduce_mean(tf.ragged.boolean_mask(
-                tf.abs(y - logits), m),
-                                  axis=(1, 2, 3))  # TODO
+            if FLAGS.loss_fn == 'mse':
+                loss = self.mse_mask(y, logits, m)
+            elif FLAGS.loss_fn == 'mae':
+                loss = self.mae_mask(y, logits, m)
+            else:
+                raise NotImplementedError
             loss = tf.nn.compute_average_loss(
                 loss, global_batch_size=FLAGS.bs)  # distributed-aware
             regularization_loss = tf.nn.scale_regularization_loss(
                 tf.math.add_n(self.model.losses))  # distributed-aware
             if FLAGS.amp:
                 regularization_loss = tf.cast(regularization_loss, tf.float16)
+                loss = tf.cast(loss, tf.float16)
                 total_loss = loss + regularization_loss
                 total_loss = self.optim.get_scaled_loss(total_loss)
             else:
@@ -91,7 +101,7 @@ class RegHResResNet18Runner(runner.Runner):
             grads = tape.gradient(total_loss, self.model.trainable_weights)
 
         self.optim.apply_gradients(zip(grads, self.model.trainable_weights))
-        return {'loss': [loss], 'mse': [y, logits], 'mae': [y, logits]}
+        return {'loss': [loss], 'rmse': [y, logits], 'mae': [y, logits]}
 
     def validate_step(self, x, y):
         """
@@ -106,11 +116,15 @@ class RegHResResNet18Runner(runner.Runner):
         m = tf.logical_not(m)
         m = tf.concat([m, m], axis=-1)
         logits = self.model(x, training=False)
-        loss = tf.reduce_mean(tf.ragged.boolean_mask(tf.abs(y - logits), m),
-                              axis=(1, 2, 3))  # TODO
+        if FLAGS.loss_fn == 'mse':
+            loss = self.mse_mask(y, logits, m)
+        elif FLAGS.loss_fn == 'mae':
+            loss = self.mae_mask(y, logits, m)
+        else:
+            raise NotImplementedError
         loss = tf.nn.compute_average_loss(
             loss, global_batch_size=FLAGS.bs)  # distributed-aware
-        return {'loss': [loss], 'mse': [y, logits], 'mae': [y, logits]}
+        return {'loss': [loss], 'rmse': [y, logits], 'mae': [y, logits]}
 
     @tf.function
     def inference(self, x):
@@ -120,7 +134,7 @@ class RegHResResNet18Runner(runner.Runner):
 
     @property
     def required_flags(self):
-        pass
+        return ['dim', 'out_dim', 'bs', 'loss_fn']
 
     @property
     def support_amp(self):
@@ -138,3 +152,21 @@ class RegHResResNet18Runner(runner.Runner):
             ret_dict[f'out_{idx}'] = tf.gather(logits, [idx, 14 + idx],
                                                axis=-1)
         return ret_dict
+
+    def mse_mask(self, y, logits, m):
+        # back to tf32 prevent from overflowing
+        if y.dtype == tf.float16: 
+            y = tf.cast(y, tf.float32)
+        if logits.dtype == tf.float16: 
+            logits = tf.cast(logits, tf.float32)
+        return tf.reduce_mean(tf.ragged.boolean_mask((y - logits)**2, m),
+                              axis=(1, 2, 3))
+
+    def mae_mask(self, y, logits, m):
+        # back to tf32 prevent from overflowing
+        if y.dtype == tf.float16: 
+            y = tf.cast(y, tf.float32)
+        if logits.dtype == tf.float16: 
+            logits = tf.cast(logits, tf.float32)
+        return tf.reduce_mean(tf.ragged.boolean_mask(tf.abs(y - logits), m),
+                              axis=(1, 2, 3))

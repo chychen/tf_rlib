@@ -168,7 +168,7 @@ class MetricsManager:
     def _state_policy_mapper(self, state):
         if state == 'acc' or state == 'precision' or state == 'recall' or state == 'f1' or 'auc' in state or state == 'tnr@95tpr':
             return max, float('-inf')
-        if state == 'mae' or state == 'mse' or state == 'l1' or state == 'l2' or state == 'loss':
+        if state == 'mae' or state == 'mse' or state == 'l1' or state == 'l2' or state == 'loss' or state == 'rmse':
             return min, float('inf')
         if state == 'dice_coef':
             return max, float('-inf')

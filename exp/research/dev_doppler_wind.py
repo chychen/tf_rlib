@@ -6,15 +6,16 @@ FLAGS = tf_rlib.FLAGS
 
 tf_rlib.utils.purge_logs()
 tf_rlib.utils.set_gpus('0, 1, 2, 3')
-tf_rlib.utils.set_logging('WARN')
+tf_rlib.utils.set_logging('INFO')
 tf_rlib.utils.set_amp(True)
 amp_factor = 2 if FLAGS.amp else 1
 
+FLAGS.loss_fn = 'mse'
 FLAGS.bs = 128 * amp_factor * FLAGS.num_gpus
 FLAGS.dim = 2
 FLAGS.out_dim = 28
 FLAGS.lr = 1e-3 * amp_factor * FLAGS.num_gpus
-FLAGS.steps_per_epoch = 10000 // amp_factor // FLAGS.num_gpus
+FLAGS.steps_per_epoch = 1000 // amp_factor // FLAGS.num_gpus
 FLAGS.epochs = 300
 
 DopplerWind = tf_rlib.datasets.DopplerWind()
