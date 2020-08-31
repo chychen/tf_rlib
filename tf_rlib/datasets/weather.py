@@ -55,6 +55,10 @@ class DopplerWind(datasets.Dataset):
             # Norm
             x = (x - self.tally['mean_x']) / self.tally['std_x']
             y = (y - self.tally['mean_y']) / self.tally['std_y']
+
+            if FLAGS.amp:
+                x = tf.cast(x, tf.float16)
+                y = tf.cast(y, tf.float16)
             return x, y
 
         # TODO Augmentation and Normalization, cache on training?

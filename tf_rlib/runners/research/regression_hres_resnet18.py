@@ -1,5 +1,6 @@
 import tensorflow as tf
 import tensorflow_addons as tfa
+from tensorflow.keras.mixed_precision import experimental as mixed_precision
 from tf_rlib.models.research import HResResNet18
 from tf_rlib.runners.base import runner
 from tf_rlib import metrics
@@ -40,6 +41,9 @@ class RegHResResNet18Runner(runner.Runner):
                                           beta_1=FLAGS.adam_beta_1,
                                           beta_2=FLAGS.adam_beta_2,
                                           epsilon=FLAGS.adam_epsilon)
+        if FLAGS.amp:
+            self.optim = mixed_precision.LossScaleOptimizer(
+                self.optim, loss_scale='dynamic')
         return {'HResResNet18': self.model}, None, train_metrics, valid_metrics
 
     def begin_fit_callback(self, lr):
@@ -73,9 +77,19 @@ class RegHResResNet18Runner(runner.Runner):
                 loss, global_batch_size=FLAGS.bs)  # distributed-aware
             regularization_loss = tf.nn.scale_regularization_loss(
                 tf.math.add_n(self.model.losses))  # distributed-aware
-            total_loss = loss + regularization_loss
+            if FLAGS.amp:
+                regularization_loss = tf.cast(regularization_loss, tf.float16)
+                total_loss = loss + regularization_loss
+                total_loss = self.optim.get_scaled_loss(total_loss)
+            else:
+                total_loss = loss + regularization_loss
 
-        grads = tape.gradient(total_loss, self.model.trainable_weights)
+        if FLAGS.amp:
+            grads = tape.gradient(total_loss, self.model.trainable_weights)
+            grads = self.optim.get_unscaled_gradients(grads)
+        else:
+            grads = tape.gradient(total_loss, self.model.trainable_weights)
+
         self.optim.apply_gradients(zip(grads, self.model.trainable_weights))
         return {'loss': [loss], 'mse': [y, logits], 'mae': [y, logits]}
 
@@ -107,6 +121,10 @@ class RegHResResNet18Runner(runner.Runner):
     @property
     def required_flags(self):
         pass
+
+    @property
+    def support_amp(self):
+        return True
 
     def custom_log_data(self, x_batch, y_batch):
         logits = self.model(x_batch, training=False)

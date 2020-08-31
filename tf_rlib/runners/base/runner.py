@@ -329,9 +329,8 @@ class Runner:
                                               disable=not FLAGS.tqdm)
                     # logging
                     self.metrics_manager.show_message(self.global_epoch)
-            except:
-                #                 ctx.close()
-                pass
+            except Exception as e:
+                LOGGER.error(f'{e}')
             self.metrics_manager.register_hparams()
 
     def _validation_loop(self, valid_pbar):
