@@ -20,6 +20,7 @@ def set_logging(level):
 
 def set_gpus(gpus):
     FLAGS.gpus = gpus
+    FLAGS.num_gpus = len(gpus.split(','))
     os.environ["CUDA_VISIBLE_DEVICES"] = FLAGS.gpus
     logging.warn('update CUDA_VISIBLE_DEVICES={}'.format(FLAGS.gpus))
 
@@ -92,7 +93,7 @@ def init_tf_rlib(show=False, first=False):
         os.path.join(FLAGS.log_path, 'logging.txt'))
     hd.setLevel('INFO')
     LOGGER.addHandler(hd)
-    tf.get_logger().setLevel('WARNING')
+    tf.get_logger().setLevel('WARN')
     LOGGER.setLevel(FLAGS.log_level)
 
     # envs

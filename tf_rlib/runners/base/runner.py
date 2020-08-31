@@ -73,12 +73,11 @@ class Runner:
                 for key, model in self.models.items():
                     if type(self.train_dataset.element_spec[0]) != tuple:
                         self.models_inputs_shape[key] = [
-                            self.train_dataset.element_spec[0].shape[1:]
+                            train_dataset.element_spec[0].shape[1:]
                         ]
                     else:
                         self.models_inputs_shape[key] = [
-                            x.shape[1:]
-                            for x in self.train_dataset.element_spec[0]
+                            x.shape[1:] for x in train_dataset.element_spec[0]
                         ]
             else:
                 for key in self.models_inputs_shape:
@@ -155,7 +154,7 @@ class Runner:
             self.metrics_manager.update(metrics, MetricsManager.KEY_TRAIN)
 
         if self.strategy.num_replicas_in_sync > 1:
-            self.strategy.experimental_run_v2(train_fn, args=(x, y))
+            self.strategy.run(train_fn, args=(x, y))
         else:
             train_fn(x, y)
 
@@ -180,7 +179,7 @@ class Runner:
             self.metrics_manager.update(metrics, MetricsManager.KEY_VALID)
 
         if self.strategy.num_replicas_in_sync > 1:
-            self.strategy.experimental_run_v2(valid_fn, args=(x, y))
+            self.strategy.run(valid_fn, args=(x, y))
         else:
             valid_fn(x, y)
 
@@ -231,6 +230,7 @@ class Runner:
         pass
 
     def fit(self, epochs, lr, find_best=False):
+        LOGGER.debug('starting fit')
         global_total_epochs = self.global_epoch + epochs
         with self._get_strategy_ctx() as ctx:
             self.begin_fit_callback(lr)
@@ -269,6 +269,7 @@ class Runner:
                         'epoch/total':
                         '{}/{}'.format(self.global_epoch, global_total_epochs)
                     })
+                    LOGGER.debug('starting training epoch')
                     for _, (x_batch, y_batch) in enumerate(self.train_dataset):
                         self.global_step = self.global_step + 1
                         if FLAGS.amp:
@@ -278,7 +279,6 @@ class Runner:
                                 self.global_step,
                                 self.metrics_manager.KEY_TRAIN,
                                 tag=self.metrics_manager.TAG_HPARAMS)
-                        # train one step
                         if FLAGS.profile:
                             with profiler.Profiler(
                                     os.path.join(FLAGS.log_path, 'profile')):
@@ -300,7 +300,7 @@ class Runner:
                             self.global_epoch = self.global_epoch + 1
                     self._log_data(x_batch, y_batch, training=True)
 
-                    # validate one epoch
+                    LOGGER.debug('starting validaion epoch')
                     if not is_last_run or not find_best:
                         self._validation_loop(valid_pbar)
 
@@ -341,6 +341,7 @@ class Runner:
         if self.valid_dataset is not None:
             for valid_num_batch, (x_batch,
                                   y_batch) in enumerate(self.valid_dataset):
+                LOGGER.debug('starting valid set')
                 # validate one step
                 self._validate_step(x_batch, y_batch)
                 valid_pbar.update(1)
@@ -415,7 +416,11 @@ class Runner:
     def custom_log_data(self, x_batch, y_batch):
         return None
 
-    def _log_data(self, x_batch, y_batch, training):
+    def _log_data(self, x, y, training):
+        LOGGER.debug('getting first replica before logging')
+        if self.strategy.num_replicas_in_sync > 1:
+            x_batch = x.values[0]
+            y_batch = y.values[0]
         key = MetricsManager.KEY_TRAIN if training else MetricsManager.KEY_VALID
         # log images
         # vis x, y if images
@@ -443,26 +448,23 @@ class Runner:
                         names.append(model_key + '_' + str(idx))
                         batches.append(model_out[idx])
 
-        # add custom if exists
+        LOGGER.debug('starting custom_log_data')
         custom_dict = self.custom_log_data(x_batch, y_batch)
         if custom_dict is not None and type(custom_dict) == dict:
             for k, v in custom_dict.items():
                 names.append(k)
                 batches.append(v)
 
-        # vis
+        LOGGER.debug('starting to vis log data')
         if len(batches) > 0:
             num_vis = 3 if batches[0].shape[0] > 3 else batches[0].shape[0]
             idx = np.random.choice(list(range(batches[0].shape[0])), num_vis)
             for name, batch in zip(names, batches):
-                if self.strategy.num_replicas_in_sync > 1:
-                    batch_local = batch.values[0]
-                else:
-                    batch_local = batch
                 # randomly pick samples
-                batch_local = tf.gather(batch_local, idx, axis=0)
-                if type(batch_local) == tuple:
-                    for i, sub_batch in enumerate(batch_local):
+                batch = tf.gather(batch, idx, axis=0)
+                if type(batch) == tuple:
+                    LOGGER.debug('tuple')
+                    for i, sub_batch in enumerate(batch):
                         # others
                         if len(sub_batch.shape) == 4 and sub_batch.shape[
                                 -1] <= 4:  # [b, w, h, c], c<4
@@ -483,11 +485,9 @@ class Runner:
                                 epoch=self.global_epoch,
                                 name=name + '_' + few_shot_name[i])
                 else:
+                    LOGGER.debug('not tuple')
                     if len(
-                            batch_local.shape
-                    ) == 4 and batch_local.shape[-1] <= 4:  # [b, w, h, c], c<4
+                            batch.shape
+                    ) == 4 and batch.shape[-1] <= 4:  # [b, w, h, c], c<4
                         self.metrics_manager.show_image(
-                            batch_local,
-                            key,
-                            epoch=self.global_epoch,
-                            name=name)
+                            batch, key, epoch=self.global_epoch, name=name)

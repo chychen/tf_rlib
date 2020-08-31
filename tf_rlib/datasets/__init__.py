@@ -6,3 +6,4 @@ from tf_rlib.datasets.phm2018 import PHM2018
 from tf_rlib.datasets.bump import NVBump
 from tf_rlib.datasets.ood import SVDBlurCifar10vsSVHN, Cifar10OneClass, UDMAA02FD, MVTecDS, Cifar10vsSVHN, MnistOOD
 from tf_rlib.datasets.semi import Cifar10Rotate, Cifar10Semi
+from tf_rlib.datasets.weather import DopplerWind

@@ -41,6 +41,7 @@ flags.DEFINE_string('benchmark', None, 'class name of benchmark runner')
 flags.DEFINE_string(
     'gpus', None,
     'default None means all, os.environ[\'CUDA_VISIBLE_DEVICES\']=?')
+flags.DEFINE_integer('num_gpus', None, 'num_gpus')
 flags.DEFINE_bool('amp', False, 'use Automatically Mixed Precision?')
 flags.DEFINE_bool(
     'xla', False,
@@ -61,7 +62,10 @@ flags.DEFINE_integer('pre_augment', None,
 ## Optimizer
 flags.DEFINE_integer('bs', None, 'global Batch Size for all gpus')
 flags.DEFINE_float('lr', None, 'Initial Learning Rate')
-flags.DEFINE_integer('epochs', None, 'number of epochs for warming up')
+flags.DEFINE_integer('epochs', None, 'number of epochs')
+flags.DEFINE_integer(
+    'steps_per_epoch', None,
+    'number of steps per epoch, used when one epoch is too large')
 flags.DEFINE_integer('warmup', 5, 'number of epochs for warming up')
 flags.DEFINE_float('adam_beta_1', 0.9, 'adam beta_1')
 flags.DEFINE_float('adam_beta_2', 0.999, 'adam beta_2')

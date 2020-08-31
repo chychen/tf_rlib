@@ -1,2 +1,2 @@
 #!/bin/sh
-yapf -rip .
+yapf -rip -vv .
