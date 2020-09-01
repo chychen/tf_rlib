@@ -63,7 +63,7 @@ class ResNet(models.Model):
         else:
             raise ValueError
 
-        self.in_filters = 64
+        self.in_filters = FLAGS.in_filters if FLAGS.in_filters else 64
         self.head = blocks.BasicBlock(self.in_filters,
                                       self.in_ks,
                                       strides=self.in_strides,
@@ -155,6 +155,19 @@ def ResNet50(feature_mode=False, preact=False, last_norm=False):
     FLAGS.depth = 50
     FLAGS.bottleneck = True
     m = ResNet([3, 4, 6, 3],
+               feature_mode=feature_mode,
+               preact=preact,
+               last_norm=last_norm)
+    return m
+
+
+def WRN18(feature_mode=False, preact=False, last_norm=False):
+    """
+    """
+    FLAGS.depth = 18
+    FLAGS.bottleneck = False
+    FLAGS.in_filters = 16 * 8
+    m = ResNet([2, 2, 2, 2],
                feature_mode=feature_mode,
                preact=preact,
                last_norm=last_norm)

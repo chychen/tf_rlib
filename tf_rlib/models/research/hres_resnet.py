@@ -57,7 +57,7 @@ class HResResNet(models.Model):
         else:
             raise ValueError
 
-        self.in_filters = 64
+        self.in_filters = FLAGS.in_filters if FLAGS.in_filters else 64
         self.head = blocks.BasicBlock(self.in_filters,
                                       self.in_ks,
                                       strides=1,
@@ -143,6 +143,19 @@ def HResResNet50(feature_mode=False, preact=False, last_norm=False):
     FLAGS.depth = 50
     FLAGS.bottleneck = True
     m = HResResNet([3, 4, 6, 3],
+                   feature_mode=feature_mode,
+                   preact=preact,
+                   last_norm=last_norm)
+    return m
+
+
+def HResWRN16_8(feature_mode=False, preact=False, last_norm=False):
+    """ 
+    """
+    FLAGS.depth = 18
+    FLAGS.bottleneck = False
+    FLAGS.in_filters = 16 * 8
+    m = HResResNet([2, 2, 2, 2],
                    feature_mode=feature_mode,
                    preact=preact,
                    last_norm=last_norm)

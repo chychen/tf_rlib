@@ -108,6 +108,7 @@ flags.DEFINE_string('global_pooling', 'GlobalAveragePooling',
                     'global_pooling function name before dense layer')
 
 # Model Architecture
+flags.DEFINE_integer('in_filters', None, 'default=64')
 flags.DEFINE_integer(
     'model_alpha', 200,
     '110 layers ranged from 48 to 270 in paper, seems larger is better but parameters inefficiency, if FLAGS.amp=True, layers_per_block = 3 if FLAGS.bottleneck else 2, total_blocks=(FLAGS.depth-2)/layers_per_block, please set FLAGS.model_alpha=total_blocks*8 to make sure channels are equal to multiple of 8.'

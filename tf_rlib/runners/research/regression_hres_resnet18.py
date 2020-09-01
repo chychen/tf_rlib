@@ -12,6 +12,8 @@ import numpy as np
 FLAGS = flags.FLAGS
 LOGGER = logging.get_absl_logger()
 
+SUB_Y = [2, 9]
+
 
 class RegHResResNet18Runner(runner.Runner):
     """ 
@@ -72,6 +74,7 @@ class RegHResResNet18Runner(runner.Runner):
         """
         """
         m = tf.cast(x[..., 16:], tf.bool)
+        m = tf.gather(m, SUB_Y, axis=-1)
         m = tf.logical_not(m)
         m = tf.concat([m, m], axis=-1)
         with tf.GradientTape() as tape:
@@ -113,6 +116,7 @@ class RegHResResNet18Runner(runner.Runner):
         """
 
         m = tf.cast(x[..., 16:], tf.bool)
+        m = tf.gather(m, SUB_Y, axis=-1)
         m = tf.logical_not(m)
         m = tf.concat([m, m], axis=-1)
         logits = self.model(x, training=False)
@@ -142,31 +146,30 @@ class RegHResResNet18Runner(runner.Runner):
 
     def custom_log_data(self, x_batch, y_batch):
         logits = self.model(x_batch, training=False)
-        layers = [1, 7, 13]
+        layers = SUB_Y  # 1250m and 4750m
         ret_dict = {}
-        for idx in layers:
-            ret_dict[f'x_{idx}'] = tf.gather(x_batch, [
-                2 + idx,
+        for i, x_idx in enumerate(layers):
+            ret_dict[f'x_{x_idx}'] = tf.gather(x_batch, [
+                2 + x_idx,
             ], axis=-1)
-            ret_dict[f'y_{idx}'] = tf.gather(y_batch, [idx, 14 + idx], axis=-1)
-            ret_dict[f'out_{idx}'] = tf.gather(logits, [idx, 14 + idx],
-                                               axis=-1)
+            ret_dict[f'y_{x_idx}'] = tf.gather(y_batch, [i, 2 + i], axis=-1)
+            ret_dict[f'out_{x_idx}'] = tf.gather(logits, [i, 2 + i], axis=-1)
         return ret_dict
 
     def mse_mask(self, y, logits, m):
         # back to tf32 prevent from overflowing
-        if y.dtype == tf.float16: 
+        if y.dtype == tf.float16:
             y = tf.cast(y, tf.float32)
-        if logits.dtype == tf.float16: 
+        if logits.dtype == tf.float16:
             logits = tf.cast(logits, tf.float32)
         return tf.reduce_mean(tf.ragged.boolean_mask((y - logits)**2, m),
                               axis=(1, 2, 3))
 
     def mae_mask(self, y, logits, m):
         # back to tf32 prevent from overflowing
-        if y.dtype == tf.float16: 
+        if y.dtype == tf.float16:
             y = tf.cast(y, tf.float32)
-        if logits.dtype == tf.float16: 
+        if logits.dtype == tf.float16:
             logits = tf.cast(logits, tf.float32)
         return tf.reduce_mean(tf.ragged.boolean_mask(tf.abs(y - logits), m),
                               axis=(1, 2, 3))

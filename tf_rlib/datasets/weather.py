@@ -15,6 +15,7 @@ LOGGER = logging.get_absl_logger()
 class DopplerWind(datasets.Dataset):
     def __init__(self, gridsize=32):  #TODO
         super(DopplerWind, self).__init__()
+        self.sub_y = [2, 9, 14 + 2, 14 + 9]
         self.gridsize = gridsize
         self.root = f'/ws_data/CWB/doppler_wind/tfrec_{gridsize}'
         mean_x = np.load('/ws_data/CWB/doppler_wind/mean_x.npy')  # (16,)
@@ -33,7 +34,8 @@ class DopplerWind(datasets.Dataset):
         return self._get_tf_dsets()
 
     def get_y_denorm_fn(self):
-        return lambda x: x * self.tally['std_y'] + self.tally['mean_y']
+        return lambda x: x * self.tally['std_y'][..., self.sub_y] + self.tally[
+            'mean_y'][..., self.sub_y]
 
     def _get_tf_dsets(self):
         # Create a dictionary describing the features.
@@ -56,12 +58,14 @@ class DopplerWind(datasets.Dataset):
             x = (x - self.tally['mean_x']) / self.tally['std_x']
             y = (y - self.tally['mean_y']) / self.tally['std_y']
 
+            y = tf.gather(y, self.sub_y, axis=-1)
+
             if FLAGS.amp:
                 x = tf.cast(x, tf.float16)
                 y = tf.cast(y, tf.float16)
             return x, y
 
-        # TODO Augmentation and Normalization, cache on training?
+        # TODO Augmentation
 
         def get_tfrec_dset(is_train: bool):
             folder = 'train' if is_train else 'test'
