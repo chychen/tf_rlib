@@ -262,7 +262,7 @@ class Runner:
                     self.train_num_batch = 0
                     self.valid_num_batch = 0
                     first_e_timer = time.time()
-                    self._begin_epoch_callback(e_idx, epochs)
+                    self._begin_epoch_callback(e_idx+1, epochs)
                     self.global_epoch = self.global_epoch + 1 * epoch_stride
                     # progress bars
                     if FLAGS.tqdm:
