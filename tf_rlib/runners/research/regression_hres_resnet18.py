@@ -60,15 +60,18 @@ class RegHResResNet18Runner(runner.Runner):
             self.init_lr, None)
 
     def begin_epoch_callback(self, epoch_id, epochs):
-        if epoch_id < FLAGS.warmup:
-            self.optim.learning_rate = epoch_id / FLAGS.warmup * self.init_lr
-        else:
-            self.lr_scheduler.decay_steps = epochs
-            self.optim.learning_rate = self.lr_scheduler(epoch_id)
-
+        self.optim.weight_decay = 0.0
         self.log_scalar('lr', self.optim.learning_rate, training=True)
-        self.optim.weight_decay = FLAGS.wd * self.optim.learning_rate / self.init_lr
         self.log_scalar('wd', self.optim.weight_decay, training=True)
+
+    def begin_step_callback(self, step_id, epochs):
+        if step_id < FLAGS.steps_per_epoch * FLAGS.warmup:
+            self.optim.learning_rate = step_id / (FLAGS.steps_per_epoch *
+                                                  FLAGS.warmup) * self.init_lr
+        else:
+            self.lr_scheduler.decay_steps = FLAGS.steps_per_epoch * epochs
+            self.optim.learning_rate = self.lr_scheduler(step_id)
+        self.optim.weight_decay = FLAGS.wd * self.optim.learning_rate / self.init_lr
 
     def train_step(self, x, y):
         """
@@ -138,7 +141,7 @@ class RegHResResNet18Runner(runner.Runner):
 
     @property
     def required_flags(self):
-        return ['dim', 'out_dim', 'bs', 'loss_fn']
+        return ['dim', 'out_dim', 'bs', 'loss_fn', 'steps_per_epoch']
 
     @property
     def support_amp(self):
@@ -157,19 +160,9 @@ class RegHResResNet18Runner(runner.Runner):
         return ret_dict
 
     def mse_mask(self, y, logits, m):
-        # back to tf32 prevent from overflowing
-        if y.dtype == tf.float16:
-            y = tf.cast(y, tf.float32)
-        if logits.dtype == tf.float16:
-            logits = tf.cast(logits, tf.float32)
         return tf.reduce_mean(tf.ragged.boolean_mask((y - logits)**2, m),
                               axis=(1, 2, 3))
 
     def mae_mask(self, y, logits, m):
-        # back to tf32 prevent from overflowing
-        if y.dtype == tf.float16:
-            y = tf.cast(y, tf.float32)
-        if logits.dtype == tf.float16:
-            logits = tf.cast(logits, tf.float32)
         return tf.reduce_mean(tf.ragged.boolean_mask(tf.abs(y - logits), m),
                               axis=(1, 2, 3))

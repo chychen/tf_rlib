@@ -39,9 +39,8 @@ flags.DEFINE_string('benchmark', None, 'class name of benchmark runner')
 
 # Speedup Options
 flags.DEFINE_string(
-    'gpus', None,
-    'default None means all, os.environ[\'CUDA_VISIBLE_DEVICES\']=?')
-flags.DEFINE_integer('num_gpus', None, 'num_gpus')
+    'gpus', '0', 'default single gpu, os.environ[\'CUDA_VISIBLE_DEVICES\']=?')
+flags.DEFINE_integer('num_gpus', 1, 'num_gpus')
 flags.DEFINE_bool('amp', False, 'use Automatically Mixed Precision?')
 flags.DEFINE_bool(
     'xla', False,

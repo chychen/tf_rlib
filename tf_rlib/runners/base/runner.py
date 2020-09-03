@@ -1,4 +1,6 @@
 import os
+import sys
+import traceback
 import time
 import numpy as np
 import copy
@@ -229,6 +231,14 @@ class Runner:
     def begin_epoch_callback(self, epoch_id, epochs):
         pass
 
+    def _begin_epoch_callback(self, epoch_id, epochs):
+        if FLAGS.amp:
+            self.log_scalar('loss_scale', self.optim.loss_scale(), True)
+        self.begin_epoch_callback(epoch_id, epochs)
+
+    def begin_step_callback(self, step_id, epochs):
+        pass
+
     def fit(self, epochs, lr, find_best=False):
         LOGGER.debug('starting fit')
         global_total_epochs = self.global_epoch + epochs
@@ -244,6 +254,7 @@ class Runner:
                                   dynamic_ncols=True,
                                   disable=not FLAGS.tqdm)
                 epoch_stride = FLAGS.pre_augment if FLAGS.pre_augment is not None else 1
+                step_idx = 0
                 for e_idx in range(0, epochs, epoch_stride):
                     is_last_run = (e_idx //
                                    epoch_stride) == (epochs // epoch_stride -
@@ -251,7 +262,7 @@ class Runner:
                     self.train_num_batch = 0
                     self.valid_num_batch = 0
                     first_e_timer = time.time()
-                    self.begin_epoch_callback(e_idx, epochs)
+                    self._begin_epoch_callback(e_idx, epochs)
                     self.global_epoch = self.global_epoch + 1 * epoch_stride
                     # progress bars
                     if FLAGS.tqdm:
@@ -272,13 +283,8 @@ class Runner:
                     LOGGER.debug('starting training epoch')
                     for _, (x_batch, y_batch) in enumerate(self.train_dataset):
                         self.global_step = self.global_step + 1
-                        if FLAGS.amp:
-                            self.metrics_manager.add_scalar(
-                                'loss_scale',
-                                self.optim.loss_scale(),
-                                self.global_step,
-                                self.metrics_manager.KEY_TRAIN,
-                                tag=self.metrics_manager.TAG_HPARAMS)
+                        step_idx = step_idx + 1
+                        self.begin_step_callback(step_idx, epochs)
                         if FLAGS.profile:
                             with profiler.Profiler(
                                     os.path.join(FLAGS.log_path, 'profile')):
@@ -330,7 +336,17 @@ class Runner:
                     # logging
                     self.metrics_manager.show_message(self.global_epoch)
             except Exception as e:
-                LOGGER.error(f'{e}')
+                error_class = e.__class__.__name__
+                detail = e.args[0]
+                cl, exc, tb = sys.exc_info()
+                lastCallStack = traceback.extract_tb(tb)[-1]
+                fileName = lastCallStack[0]
+                lineNum = lastCallStack[1]
+                funcName = lastCallStack[2]
+                LOGGER.error(
+                    f"File \"{fileName}\", line {lineNum}, in {funcName}: [{error_class}] {detail}"
+                )
+
             self.metrics_manager.register_hparams()
 
     def _validation_loop(self, valid_pbar):
@@ -384,11 +400,13 @@ class Runner:
     def load_best(self):
         self.load_all(os.path.join(self.save_path, 'best'))
 
-    def log_scalar(self, name, value, training):
+    def log_scalar(self, name, value, training, step=None):
+        if step is None:
+            step = self.global_epoch
         key = MetricsManager.KEY_TRAIN if training else MetricsManager.KEY_VALID
         self.metrics_manager.add_scalar(name,
                                         value,
-                                        self.global_epoch,
+                                        step,
                                         key,
                                         tag=MetricsManager.TAG_HPARAMS)
 
@@ -415,11 +433,11 @@ class Runner:
     def custom_log_data(self, x_batch, y_batch):
         return None
 
-    def _log_data(self, x, y, training):
+    def _log_data(self, x_batch, y_batch, training):
         LOGGER.debug('getting first replica before logging')
         if self.strategy.num_replicas_in_sync > 1:
-            x_batch = x.values[0]
-            y_batch = y.values[0]
+            x_batch = x_batch.values[0]
+            y_batch = y_batch.values[0]
         key = MetricsManager.KEY_TRAIN if training else MetricsManager.KEY_VALID
         # log images
         # vis x, y if images
